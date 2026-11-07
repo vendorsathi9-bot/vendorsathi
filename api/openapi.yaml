@@ -1,0 +1,433 @@
+openapi: 3.0.3
+info:
+  title: VendorSaathi REST API
+  description: Authoritative REST API for VendorSaathi — Local commerce platform connecting vendors and customers.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development environment
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new customer user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password]
+              properties:
+                phone:
+                  type: string
+                  example: "+919876543210"
+                email:
+                  type: string
+                  format: email
+                  example: "customer@example.com"
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "SecretPassword123"
+      responses:
+        '201':
+          description: Customer registered successfully, token pair returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Validation error or invalid request body
+        '409':
+          description: Phone or email already registered
+
+  /auth/login:
+    post:
+      summary: Authenticate with phone and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, password]
+              properties:
+                phone:
+                  type: string
+                  example: "+919876543210"
+                password:
+                  type: string
+                  format: password
+                  example: "SecretPassword123"
+      responses:
+        '200':
+          description: Token pair returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials or inactive account
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token using a valid refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: New token pair returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid or expired refresh token, or inactive account
+
+  /auth/logout:
+    post:
+      summary: Revoke refresh session and log out
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '204':
+          description: Successfully logged out
+
+  /me:
+    get:
+      summary: Get current authenticated identity
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User object
+
+  /mobility/nearby-vendors:
+    get:
+      summary: Discover active nearby vendors using Haversine bounded distance
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: radius_km
+          in: query
+          schema:
+            type: number
+            default: 5.0
+      responses:
+        '200':
+          description: Array of nearby vendors with distance in km
+
+  /carts/me:
+    get:
+      summary: Get current customer active cart
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Active cart with line items
+
+  /carts/items:
+    post:
+      summary: Add or update item in cart
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, quantity]
+              properties:
+                product_id:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Updated cart
+
+  /orders:
+    post:
+      summary: Idempotent checkout transaction with atomic stock reservation
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fulfilment_type]
+              properties:
+                fulfilment_type:
+                  type: string
+                  enum: [PICKUP, DELIVERY]
+                idempotency_key:
+                  type: string
+                delivery_address_snapshot:
+                  type: string
+      responses:
+        '201':
+          description: Order created with PENDING status
+
+    get:
+      summary: List orders for authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Paginated orders
+
+  /orders/{id}/accept:
+    post:
+      summary: Vendor accepts pending order
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order moved to ACCEPTED
+
+  /orders/{id}/reject:
+    post:
+      summary: Vendor rejects order and releases inventory reservation
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order moved to REJECTED and inventory released
+
+  /orders/{id}/complete:
+    post:
+      summary: Vendor completes order and fulfils physical inventory
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order COMPLETED and inventory decremented
+
+  /payments:
+    post:
+      summary: Record a cash or UPI payment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, method, amount_paise]
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                method:
+                  type: string
+                  enum: [CASH, UPI]
+                amount_paise:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: Payment recorded
+
+  /udhaar/accounts:
+    post:
+      summary: Vendor opens an Udhaar credit account for a customer
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id]
+              properties:
+                customer_id:
+                  type: string
+                  format: uuid
+                credit_limit_paise:
+                  type: integer
+      responses:
+        '201':
+          description: Account created
+
+  /udhaar/accounts/{id}/entries:
+    post:
+      summary: Append-only transaction entry on Udhaar ledger
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entry_type, amount_paise]
+              properties:
+                entry_type:
+                  type: string
+                  enum: [CREDIT, REPAYMENT, ADJUSTMENT]
+                amount_paise:
+                  type: integer
+                  minimum: 1
+                note:
+                  type: string
+      responses:
+        '201':
+          description: Entry recorded and balance recalculated
+
+  /sync/operations:
+    post:
+      summary: Submit bounded offline operations from device outbox
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_operation_id, device_id, operation_type, payload]
+              properties:
+                client_operation_id:
+                  type: string
+                  format: uuid
+                device_id:
+                  type: string
+                operation_type:
+                  type: string
+                  enum: [PRODUCT_DESCRIPTION_UPDATE, STOCK_ADJUSTMENT_REQUEST]
+                payload:
+                  type: object
+      responses:
+        '201':
+          description: Operation evaluated and state synchronized
+
+  /analytics/vendor/summary:
+    get:
+      summary: Vendor sales summary & collections
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sales, completed orders, and Udhaar metrics
+
+  /analytics/platform/overview:
+    get:
+      summary: Administrative platform overview
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Platform-wide aggregate metrics
+
+  /audit-logs:
+    get:
+      summary: Admin audit trail
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Paginated audit logs
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    TokenResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, token_type, user]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          example: 900
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/UserInfo'
+    UserInfo:
+      type: object
+      required: [id, phone, status, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+        email:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+        roles:
+          type: array
+          items:
+            type: string
