@@ -16,13 +16,14 @@ const (
 )
 
 type User struct {
-	ID           uuid.UUID  `db:"id"`
-	Phone        string     `db:"phone"`
-	Email        *string    `db:"email"`
-	PasswordHash string     `db:"password_hash"`
-	Status       UserStatus `db:"status"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
+	ID                uuid.UUID  `db:"id"`
+	Phone             string     `db:"phone"`
+	Email             *string    `db:"email"`
+	PasswordHash      string     `db:"password_hash"`
+	Status            UserStatus `db:"status"`
+	PreferredLanguage string     `db:"preferred_language"`
+	CreatedAt         time.Time  `db:"created_at"`
+	UpdatedAt         time.Time  `db:"updated_at"`
 }
 
 type Role struct {
@@ -50,8 +51,9 @@ type UserWithRoles struct {
 }
 
 type UpdateProfileInput struct {
-	Phone string `json:"phone,omitempty"`
-	Email string `json:"email,omitempty"`
+	Phone             string `json:"phone,omitempty"`
+	Email             string `json:"email,omitempty"`
+	PreferredLanguage string `json:"preferred_language,omitempty"`
 }
 
 type UpdateStatusInput struct {
@@ -67,13 +69,14 @@ type RevokeRoleInput struct {
 }
 
 type UserOutput struct {
-	ID        uuid.UUID  `json:"id"`
-	Phone     string     `json:"phone"`
-	Email     *string    `json:"email,omitempty"`
-	Status    UserStatus `json:"status"`
-	Roles     []string   `json:"roles"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID                uuid.UUID  `json:"id"`
+	Phone             string     `json:"phone"`
+	Email             *string    `json:"email,omitempty"`
+	Status            UserStatus `json:"status"`
+	PreferredLanguage string     `json:"preferred_language"`
+	Roles             []string   `json:"roles"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 type UserListOutput struct {
@@ -84,12 +87,13 @@ type UserListOutput struct {
 
 func (u *User) ToOutput(roles []string) UserOutput {
 	return UserOutput{
-		ID:        u.ID,
-		Phone:     u.Phone,
-		Email:     u.Email,
-		Status:    u.Status,
-		Roles:     roles,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
+		ID:                u.ID,
+		Phone:             u.Phone,
+		Email:             u.Email,
+		Status:            u.Status,
+		PreferredLanguage: u.PreferredLanguage,
+		Roles:             roles,
+		CreatedAt:         u.CreatedAt,
+		UpdatedAt:         u.UpdatedAt,
 	}
 }

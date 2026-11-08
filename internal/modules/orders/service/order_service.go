@@ -194,7 +194,36 @@ func (s *OrderService) Checkout(ctx context.Context, customerID uuid.UUID, input
 			CreatedAt:           now,
 		})
 	}
-	total := subtotal // extend with delivery fee etc. in future
+	var discountPaise int64
+	if input.RedeemLoyaltyPoints > 0 {
+		var pointsBalance int
+		var accountID uuid.UUID
+		err = tx.QueryRow(ctx, `SELECT id, points_balance FROM loyalty_accounts WHERE customer_id = $1 FOR UPDATE`, customerID).Scan(&accountID, &pointsBalance)
+		if err == nil && pointsBalance >= input.RedeemLoyaltyPoints {
+			requestedDiscount := int64(input.RedeemLoyaltyPoints) * 100
+			if requestedDiscount > subtotal {
+				discountPaise = subtotal
+			} else {
+				discountPaise = requestedDiscount
+			}
+			_, _ = tx.Exec(ctx, `
+				UPDATE loyalty_accounts
+				SET points_balance = points_balance - $1, updated_at = NOW()
+				WHERE id = $2
+			`, input.RedeemLoyaltyPoints, accountID)
+
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO loyalty_transactions (account_id, order_id, points, transaction_type, description, created_at)
+				VALUES ($1, $2, $3, 'REDEEMED', 'Redeemed during checkout', NOW())
+				ON CONFLICT (account_id, order_id, transaction_type) DO NOTHING
+			`, accountID, orderID, -input.RedeemLoyaltyPoints)
+		}
+	}
+
+	total := subtotal - discountPaise
+	if total < 0 {
+		total = 0
+	}
 
 	var idemKey *string
 	if input.IdempotencyKey != "" {
@@ -209,6 +238,7 @@ func (s *OrderService) Checkout(ctx context.Context, customerID uuid.UUID, input
 		FulfilmentType:          input.FulfilmentType,
 		Status:                  model.OrderStatusPending,
 		SubtotalPaise:           subtotal,
+		DiscountPaise:           discountPaise,
 		TotalPaise:              total,
 		DeliveryAddressSnapshot: input.DeliveryAddressSnapshot,
 		IdempotencyKey:          idemKey,
@@ -440,6 +470,26 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderID, vendorUserID 
 	// Fulfil inventory: decrement on_hand and reserved
 	if err := s.fulfilInventoryInTx(ctx, tx, orderID, vendorUserID); err != nil {
 		return nil, err
+	}
+
+	// Award loyalty points for completed order (1 point per ₹10, i.e., total_paise / 1000)
+	earnedPoints := int(order.TotalPaise / 1000)
+	if earnedPoints > 0 {
+		var accountID uuid.UUID
+		err = tx.QueryRow(ctx, `
+			INSERT INTO loyalty_accounts (customer_id, points_balance, created_at, updated_at)
+			VALUES ($1, $2, NOW(), NOW())
+			ON CONFLICT (customer_id) DO UPDATE
+			SET points_balance = loyalty_accounts.points_balance + $2, updated_at = NOW()
+			RETURNING id
+		`, order.CustomerID, earnedPoints).Scan(&accountID)
+		if err == nil {
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO loyalty_transactions (account_id, order_id, points, transaction_type, description, created_at)
+				VALUES ($1, $2, $3, 'EARNED', 'Reward for completed purchase', NOW())
+				ON CONFLICT (account_id, order_id, transaction_type) DO NOTHING
+			`, accountID, orderID, earnedPoints)
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {

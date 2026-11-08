@@ -1,20 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { ApiClient, User } from '../../core/api/apiClient';
-import { Check, ShieldAlert, Store } from 'lucide-react';
+import { ApiClient, VendorItem } from '../../core/api/apiClient';
+import { useLanguage } from '../../core/i18n/LanguageContext';
+import { 
+  Store, 
+  Check, 
+  ShieldAlert, 
+  Clock, 
+  MapPin, 
+  Package, 
+  RefreshCw, 
+  Filter
+} from 'lucide-react';
 
 export const VendorsPage: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const { t } = useLanguage();
+  const [vendors, setVendors] = useState<VendorItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const loadVendors = async () => {
     setLoading(true);
     try {
-      const res = await ApiClient.listUsers(50);
-      // Filter users who have the VENDOR role
-      const vendorUsers = (res.data || []).filter(u => u.roles?.includes('VENDOR'));
-      setUsers(vendorUsers);
+      const data = await ApiClient.listVendors();
+      setVendors(data || []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load vendors', err);
     } finally {
       setLoading(false);
     }
@@ -24,83 +35,206 @@ export const VendorsPage: React.FC = () => {
     loadVendors();
   }, []);
 
-  const handleStatusChange = async (userId: string, newStatus: 'ACTIVE' | 'SUSPENDED') => {
-    const reason = prompt(`Reason for setting status to ${newStatus}:`);
-    if (!reason) return;
+  const handleStatusChange = async (vendorId: string, newStatus: 'ACTIVE' | 'SUSPENDED' | 'PENDING') => {
+    const confirmMessage = newStatus === 'ACTIVE'
+      ? 'Approve and activate this vendor on VendorSaathi?'
+      : newStatus === 'SUSPENDED'
+      ? 'Suspend this vendor? Their products will be hidden from discovery.'
+      : 'Reset vendor status to pending?';
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setActionLoadingId(vendorId);
     try {
-      await ApiClient.updateUserStatus(userId, newStatus);
+      await ApiClient.updateVendorStatus(vendorId, newStatus);
       await loadVendors();
     } catch (err: any) {
       alert(`Action failed: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const filteredVendors = vendors.filter(v => {
+    if (filter === 'ALL') return true;
+    return v.status === filter;
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return <span className="badge badge-success">ACTIVE</span>;
+      case 'PENDING':
+        return <span className="badge badge-warning">PENDING APPROVAL</span>;
+      case 'SUSPENDED':
+        return <span className="badge badge-danger">SUSPENDED</span>;
+      default:
+        return <span className="badge badge-neutral">{status}</span>;
     }
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>Vendor Management</h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>Review onboarding, active vendors, and operational status controls.</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>{t('vendorTitle')}</h1>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('vendorSubtitle')}</p>
         </div>
-        <button onClick={loadVendors} className="btn btn-secondary">Refresh</button>
+        <button onClick={loadVendors} className="btn btn-secondary" disabled={loading}>
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          {t('refresh')}
+        </button>
       </div>
 
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+        {(['ALL', 'PENDING', 'ACTIVE', 'SUSPENDED'] as const).map(tab => {
+          const count = tab === 'ALL' ? vendors.length : vendors.filter(v => v.status === tab).length;
+          const active = filter === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.4rem 0.85rem',
+                borderRadius: '0.375rem',
+                fontSize: '0.85rem',
+                fontWeight: active ? 600 : 500,
+                backgroundColor: active ? '#2563eb' : '#f1f5f9',
+                color: active ? '#ffffff' : '#475569',
+                transition: 'all 0.15s ease-in-out',
+              }}
+            >
+              <Filter size={13} />
+              {tab === 'ALL' ? t('filterAll') : tab === 'PENDING' ? t('filterPending') : tab === 'ACTIVE' ? t('filterActive') : t('filterSuspended')}
+              <span style={{
+                background: active ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                padding: '0.1rem 0.4rem',
+                borderRadius: '9999px',
+                fontSize: '0.75rem',
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Vendors Table */}
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th>Vendor User ID</th>
-              <th>Phone</th>
-              <th>Roles</th>
-              <th>Status</th>
-              <th>Joined Date</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th>{t('businessName')}</th>
+              <th>{t('phone')}</th>
+              <th>{t('location')}</th>
+              <th>{t('productsCount')}</th>
+              <th>{t('status')}</th>
+              <th>{t('joinedDate')}</th>
+              <th style={{ textAlign: 'right' }}>{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Loading vendors...</td></tr>
-            ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-                  <Store size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
-                  <div>No registered vendors found.</div>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                  <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
+                  {t('loading')}
+                </td>
+              </tr>
+            ) : filteredVendors.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '3.5rem', color: '#64748b' }}>
+                  <Store size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.4, display: 'block' }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('noVendorsFound')}</div>
                 </td>
               </tr>
             ) : (
-              users.map(u => (
-                <tr key={u.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#64748b' }}>{u.id}</td>
-                  <td style={{ fontWeight: 600 }}>{u.phone}</td>
+              filteredVendors.map(v => (
+                <tr key={v.id}>
                   <td>
-                    {u.roles?.map(r => (
-                      <span key={r} className="badge badge-info" style={{ marginRight: '0.25rem' }}>{r}</span>
-                    ))}
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{v.business_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>ID: {v.id.substring(0, 8)}...</div>
+                  </td>
+                  <td style={{ fontWeight: 500 }}>{v.phone}</td>
+                  <td>
+                    {v.city || v.address_line1 ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', color: '#475569' }}>
+                        <MapPin size={13} color="#2563eb" />
+                        {v.city ? `${v.city}${v.address_line1 ? `, ${v.address_line1}` : ''}` : v.address_line1}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Not configured</span>
+                    )}
                   </td>
                   <td>
-                    <span className={`badge ${u.status === 'ACTIVE' ? 'badge-success' : u.status === 'SUSPENDED' ? 'badge-danger' : 'badge-warning'}`}>
-                      {u.status}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>
+                      <Package size={14} color="#64748b" />
+                      {v.product_count}
                     </span>
                   </td>
-                  <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td>
+                    {getStatusBadge(v.status)}
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.15rem' }}>
+                      Shop: {v.availability_status}
+                    </div>
+                  </td>
+                  <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                    {new Date(v.created_at).toLocaleDateString()}
+                  </td>
                   <td style={{ textAlign: 'right' }}>
-                    {u.status === 'ACTIVE' ? (
-                      <button
-                        onClick={() => handleStatusChange(u.id, 'SUSPENDED')}
-                        className="btn btn-danger"
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                      >
-                        <ShieldAlert size={14} /> Suspend
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleStatusChange(u.id, 'ACTIVE')}
-                        className="btn btn-primary"
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                      >
-                        <Check size={14} /> Activate
-                      </button>
-                    )}
+                    <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                      {v.status === 'PENDING' && (
+                        <button
+                          onClick={() => handleStatusChange(v.id, 'ACTIVE')}
+                          disabled={actionLoadingId === v.id}
+                          className="btn btn-primary"
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                          title="Approve this vendor profile"
+                        >
+                          <Check size={14} /> {t('approveVendor')}
+                        </button>
+                      )}
+
+                      {v.status === 'ACTIVE' && (
+                        <button
+                          onClick={() => handleStatusChange(v.id, 'SUSPENDED')}
+                          disabled={actionLoadingId === v.id}
+                          className="btn btn-danger"
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                          title="Suspend vendor access"
+                        >
+                          <ShieldAlert size={14} /> {t('suspendVendor')}
+                        </button>
+                      )}
+
+                      {v.status === 'SUSPENDED' && (
+                        <button
+                          onClick={() => handleStatusChange(v.id, 'ACTIVE')}
+                          disabled={actionLoadingId === v.id}
+                          className="btn btn-primary"
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                          title="Re-activate vendor"
+                        >
+                          <Check size={14} /> {t('activateVendor')}
+                        </button>
+                      )}
+
+                      {v.status !== 'PENDING' && (
+                        <button
+                          onClick={() => handleStatusChange(v.id, 'PENDING')}
+                          disabled={actionLoadingId === v.id}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem' }}
+                          title="Set back to pending"
+                        >
+                          <Clock size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

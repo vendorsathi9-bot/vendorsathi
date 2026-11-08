@@ -25,12 +25,12 @@ func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
 func (r *OrderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, order *model.Order, items []model.OrderItem) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO orders (id, customer_id, vendor_id, fulfilment_type, status,
-		                    subtotal_paise, total_paise,
+		                    subtotal_paise, discount_paise, total_paise,
 		                    delivery_address_snapshot, pickup_address_snapshot,
 		                    idempotency_key, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 	`, order.ID, order.CustomerID, order.VendorID, order.FulfilmentType, order.Status,
-		order.SubtotalPaise, order.TotalPaise,
+		order.SubtotalPaise, order.DiscountPaise, order.TotalPaise,
 		order.DeliveryAddressSnapshot, order.PickupAddressSnapshot,
 		order.IdempotencyKey, order.CreatedAt, order.UpdatedAt)
 	if err != nil {
@@ -62,12 +62,12 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id uuid.UUID) (*mode
 	var o model.Order
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, customer_id, vendor_id, fulfilment_type, status,
-		       subtotal_paise, total_paise,
+		       subtotal_paise, discount_paise, total_paise,
 		       delivery_address_snapshot, pickup_address_snapshot,
 		       idempotency_key, created_at, updated_at
 		FROM orders WHERE id = $1
 	`, id).Scan(&o.ID, &o.CustomerID, &o.VendorID, &o.FulfilmentType, &o.Status,
-		&o.SubtotalPaise, &o.TotalPaise,
+		&o.SubtotalPaise, &o.DiscountPaise, &o.TotalPaise,
 		&o.DeliveryAddressSnapshot, &o.PickupAddressSnapshot,
 		&o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
@@ -120,7 +120,7 @@ func (r *OrderRepository) GetOrdersByCustomer(ctx context.Context, customerID uu
 	args := []interface{}{customerID, limit + 1}
 	query := `
 		SELECT id, customer_id, vendor_id, fulfilment_type, status,
-		       subtotal_paise, total_paise,
+		       subtotal_paise, discount_paise, total_paise,
 		       delivery_address_snapshot, pickup_address_snapshot,
 		       idempotency_key, created_at, updated_at
 		FROM orders WHERE customer_id = $1
@@ -143,7 +143,7 @@ func (r *OrderRepository) GetAllOrders(ctx context.Context, status string, limit
 	args := []interface{}{limit + 1}
 	query := `
 		SELECT id, customer_id, vendor_id, fulfilment_type, status,
-		       subtotal_paise, total_paise,
+		       subtotal_paise, discount_paise, total_paise,
 		       delivery_address_snapshot, pickup_address_snapshot,
 		       idempotency_key, created_at, updated_at
 		FROM orders WHERE 1=1
@@ -172,7 +172,7 @@ func (r *OrderRepository) GetOrdersByVendor(ctx context.Context, vendorID uuid.U
 	args := []interface{}{vendorID, limit + 1}
 	query := `
 		SELECT id, customer_id, vendor_id, fulfilment_type, status,
-		       subtotal_paise, total_paise,
+		       subtotal_paise, discount_paise, total_paise,
 		       delivery_address_snapshot, pickup_address_snapshot,
 		       idempotency_key, created_at, updated_at
 		FROM orders WHERE (vendor_id = $1 OR vendor_id IN (SELECT id FROM vendor_profiles WHERE owner_user_id = $1))
@@ -207,7 +207,7 @@ func (r *OrderRepository) queryOrders(ctx context.Context, query string, args []
 	for rows.Next() {
 		var o model.Order
 		if err := rows.Scan(&o.ID, &o.CustomerID, &o.VendorID, &o.FulfilmentType, &o.Status,
-			&o.SubtotalPaise, &o.TotalPaise,
+			&o.SubtotalPaise, &o.DiscountPaise, &o.TotalPaise,
 			&o.DeliveryAddressSnapshot, &o.PickupAddressSnapshot,
 			&o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, "", false, err
@@ -262,12 +262,12 @@ func (r *OrderRepository) GetOrderForUpdate(ctx context.Context, tx pgx.Tx, orde
 	var o model.Order
 	err := tx.QueryRow(ctx, `
 		SELECT id, customer_id, vendor_id, fulfilment_type, status,
-		       subtotal_paise, total_paise,
+		       subtotal_paise, discount_paise, total_paise,
 		       delivery_address_snapshot, pickup_address_snapshot,
 		       idempotency_key, created_at, updated_at
 		FROM orders WHERE id = $1 FOR UPDATE
 	`, orderID).Scan(&o.ID, &o.CustomerID, &o.VendorID, &o.FulfilmentType, &o.Status,
-		&o.SubtotalPaise, &o.TotalPaise,
+		&o.SubtotalPaise, &o.DiscountPaise, &o.TotalPaise,
 		&o.DeliveryAddressSnapshot, &o.PickupAddressSnapshot,
 		&o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
@@ -372,6 +372,7 @@ func toOrderOutput(o *model.Order, items []model.OrderItemOutput) *model.OrderOu
 		FulfilmentType:          o.FulfilmentType,
 		Status:                  o.Status,
 		SubtotalPaise:           o.SubtotalPaise,
+		DiscountPaise:           o.DiscountPaise,
 		TotalPaise:              o.TotalPaise,
 		DeliveryAddressSnapshot: o.DeliveryAddressSnapshot,
 		PickupAddressSnapshot:   o.PickupAddressSnapshot,

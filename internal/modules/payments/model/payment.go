@@ -9,8 +9,9 @@ import (
 type PaymentMethod string
 
 const (
-	PaymentMethodCash PaymentMethod = "CASH"
-	PaymentMethodUPI  PaymentMethod = "UPI"
+	PaymentMethodCash   PaymentMethod = "CASH"
+	PaymentMethodUPI    PaymentMethod = "UPI"
+	PaymentMethodOnline PaymentMethod = "ONLINE"
 )
 
 type PaymentStatus string
@@ -67,7 +68,7 @@ type Refund struct {
 
 type RecordPaymentInput struct {
 	OrderID        uuid.UUID              `json:"order_id" binding:"required"`
-	Method         string                 `json:"method" binding:"required,oneof=CASH UPI"`
+	Method         string                 `json:"method" binding:"required,oneof=CASH UPI ONLINE"`
 	AmountPaise    int64                  `json:"amount_paise" binding:"required,min=1"`
 	Reference      *string                `json:"reference,omitempty"`
 	Evidence       map[string]interface{} `json:"evidence,omitempty"`
@@ -136,3 +137,25 @@ func (r *Refund) ToOutput() RefundOutput {
 		CreatedAt:      r.CreatedAt,
 	}
 }
+
+// --- Gateway payment types ---
+
+type InitiateGatewayPaymentInput struct {
+	OrderID     uuid.UUID `json:"order_id" binding:"required"`
+	AmountPaise int64     `json:"amount_paise" binding:"required,min=1"`
+}
+
+type GatewayOrderResponse struct {
+	GatewayOrderID string `json:"gateway_order_id"`
+	AmountPaise    int64  `json:"amount_paise"`
+	Currency       string `json:"currency"`
+	KeyID          string `json:"key_id"` // Public key — safe to send to client
+}
+
+type VerifyGatewayPaymentInput struct {
+	GatewayOrderID   string    `json:"gateway_order_id" binding:"required"`
+	GatewayPaymentID string    `json:"gateway_payment_id" binding:"required"`
+	GatewaySignature string    `json:"gateway_signature" binding:"required"`
+	OrderID          uuid.UUID `json:"order_id" binding:"required"`
+}
+

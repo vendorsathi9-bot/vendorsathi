@@ -86,6 +86,11 @@ func (s *ProductService) CreateProduct(ctx context.Context, vendorID uuid.UUID, 
 		currency = *input.Currency
 	}
 
+	var costPrice int64
+	if input.CostPricePaise != nil {
+		costPrice = *input.CostPricePaise
+	}
+
 	product := &model.Product{
 		ID:             uuid.New(),
 		VendorID:       vendorID,
@@ -93,6 +98,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, vendorID uuid.UUID, 
 		Name:           input.Name,
 		Description:    input.Description,
 		PricePaise:     input.PricePaise,
+		CostPricePaise: costPrice,
 		Currency:       currency,
 		ImageObjectKey: input.ImageObjectKey,
 		Active:         true,
@@ -199,6 +205,20 @@ func (s *ProductService) ArchiveProduct(ctx context.Context, vendorID uuid.UUID,
 
 func (s *ProductService) GetProductsByCategory(ctx context.Context, categoryID uuid.UUID, activeOnly bool) ([]model.ProductOutput, error) {
 	products, err := s.productRepo.GetProductsByCategoryID(ctx, categoryID, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+
+	outputs := make([]model.ProductOutput, len(products))
+	for i, p := range products {
+		outputs[i] = p.ToOutput()
+	}
+	return outputs, nil
+}
+
+func (s *ProductService) GetVendorProducts(ctx context.Context, vendorID uuid.UUID) ([]model.ProductOutput, error) {
+	resolvedID := s.productRepo.ResolveVendorID(ctx, vendorID)
+	products, err := s.productRepo.GetActiveProductsByVendorID(ctx, resolvedID)
 	if err != nil {
 		return nil, err
 	}

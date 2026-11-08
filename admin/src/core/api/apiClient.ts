@@ -35,6 +35,7 @@ export interface Order {
   fulfilment_type: 'PICKUP' | 'DELIVERY';
   status: 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
   subtotal_paise: number;
+  discount_paise?: number;
   total_paise: number;
   items: OrderItem[];
   created_at: string;
@@ -49,6 +50,34 @@ export interface PlatformOverview {
   completed_orders: number;
   total_gross_sales_paise: number;
   total_collections_paise: number;
+  total_products: number;
+  total_categories: number;
+}
+
+export interface VendorItem {
+  id: string;
+  owner_user_id: string;
+  business_name: string;
+  description?: string;
+  phone: string;
+  status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+  availability_status: 'OPEN' | 'CLOSED' | 'TEMPORARILY_UNAVAILABLE';
+  address_line1?: string;
+  city?: string;
+  product_count: number;
+  created_at: string;
+}
+
+export interface AdminReview {
+  id: string;
+  customer_id: string;
+  vendor_id: string;
+  order_id: string;
+  rating: number;
+  comment?: string;
+  is_hidden: boolean;
+  created_at: string;
+  customer_name?: string;
 }
 
 export interface AuditLog {
@@ -59,6 +88,67 @@ export interface AuditLog {
   resource_id?: string;
   reason?: string;
   created_at: string;
+}
+
+export interface DeliveryAssignment {
+  id: string;
+  order_id: string;
+  agent_user_id: string;
+  status: 'ASSIGNED' | 'ACCEPTED' | 'PICKED_UP' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
+  assigned_by?: string;
+  assigned_at: string;
+  accepted_at?: string;
+  picked_up_at?: string;
+  delivered_at?: string;
+  updated_at: string;
+  customer_name?: string;
+  customer_phone?: string;
+  delivery_address_line1?: string;
+  delivery_city?: string;
+  delivery_lat?: number;
+  delivery_lng?: number;
+  order_total_paise?: number;
+  order_status?: string;
+  vendor_name?: string;
+  vendor_phone?: string;
+  vendor_lat?: number;
+  vendor_lng?: number;
+}
+
+export interface DeliveryLocation {
+  order_id: string;
+  agent_user_id: string;
+  latitude: number;
+  longitude: number;
+  updated_at: string;
+}
+
+export interface RouteData {
+  routing_available: boolean;
+  provider: string;
+  distance_type?: 'road' | 'straight_line_estimate' | 'none';
+  approximate_straight_line_km?: number;
+  distance_meters: number;
+  duration_seconds: number;
+  geometry?: {
+    type: string;
+    coordinates: [number, number][]; // [longitude, latitude]
+  };
+  distance_km: number;
+  duration_minutes: number;
+  attribution: string;
+  directions_url: string;
+  message?: string;
+}
+
+export interface MapConfigData {
+  provider: string;
+  tile_url: string;
+  routing_provider: string;
+  osrm_base_url: string;
+  geocoding_provider: string;
+  geocoding_base_url: string;
+  attribution: string;
 }
 
 const BASE_URL = '/api/v1';
@@ -152,6 +242,44 @@ export class ApiClient {
     });
   }
 
+  static async assignUserRole(userId: string, roleCode: string) {
+    return this.request(`/users/${userId}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({ role_code: roleCode }),
+    });
+  }
+
+  static async revokeUserRole(userId: string, roleCode: string) {
+    return this.request(`/users/${userId}/roles`, {
+      method: 'DELETE',
+      body: JSON.stringify({ role_code: roleCode }),
+    });
+  }
+
+  // Vendors
+  static async listVendors(): Promise<VendorItem[]> {
+    return this.request<VendorItem[]>('/vendors');
+  }
+
+  static async updateVendorStatus(vendorId: string, status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED') {
+    return this.request(`/vendors/${vendorId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  // Reviews Moderation
+  static async listReviews(): Promise<AdminReview[]> {
+    return this.request<AdminReview[]>('/reviews/admin');
+  }
+
+  static async moderateReview(reviewId: string, isHidden: boolean) {
+    return this.request(`/reviews/${reviewId}/moderate`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_hidden: isHidden }),
+    });
+  }
+
   // Orders
   static async listOrders(limit = 20, cursor = '') {
     return this.request<{ orders: Order[]; next_cursor: string; has_more: boolean }>(`/orders?limit=${limit}&cursor=${cursor}`);
@@ -160,5 +288,34 @@ export class ApiClient {
   // Audit Logs
   static async listAuditLogs(limit = 20, cursor = '') {
     return this.request<{ data: AuditLog[]; next_cursor: string; has_more: boolean }>(`/audit-logs?limit=${limit}&cursor=${cursor}`);
+  }
+
+  // Delivery Management
+  static async listDeliveryAssignments(): Promise<DeliveryAssignment[]> {
+    const res = await this.request<{ data: DeliveryAssignment[] }>('/delivery/admin/assignments');
+    return res.data || [];
+  }
+
+  static async assignDeliveryAgent(orderId: string, agentUserId: string): Promise<DeliveryAssignment> {
+    const res = await this.request<{ data: DeliveryAssignment }>(`/delivery/orders/${orderId}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ agent_user_id: agentUserId }),
+    });
+    return res.data;
+  }
+
+  static async getDeliveryLocation(orderId: string): Promise<DeliveryLocation> {
+    const res = await this.request<{ data: DeliveryLocation }>(`/delivery/orders/${orderId}/location`);
+    return res.data;
+  }
+
+  static async getRoute(originLat: number, originLng: number, destLat: number, destLng: number): Promise<RouteData> {
+    const res = await this.request<{ data: RouteData }>(`/mobility/route?origin_lat=${originLat}&origin_lng=${originLng}&dest_lat=${destLat}&dest_lng=${destLng}`);
+    return res.data;
+  }
+
+  static async getMapConfig(): Promise<MapConfigData> {
+    const res = await this.request<{ data: MapConfigData }>('/mobility/config');
+    return res.data;
   }
 }

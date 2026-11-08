@@ -43,6 +43,7 @@ type Order struct {
 	FulfilmentType          FulfilmentType `db:"fulfilment_type"`
 	Status                  OrderStatus    `db:"status"`
 	SubtotalPaise           int64          `db:"subtotal_paise"`
+	DiscountPaise           int64          `db:"discount_paise"`
 	TotalPaise              int64          `db:"total_paise"`
 	DeliveryAddressSnapshot *string        `db:"delivery_address_snapshot"`
 	PickupAddressSnapshot   *string        `db:"pickup_address_snapshot"`
@@ -90,6 +91,7 @@ type CheckoutInput struct {
 	FulfilmentType          FulfilmentType `json:"fulfilment_type" binding:"required,oneof=PICKUP DELIVERY"`
 	IdempotencyKey          string         `json:"idempotency_key"`
 	DeliveryAddressSnapshot *string        `json:"delivery_address_snapshot,omitempty"`
+	RedeemLoyaltyPoints     int            `json:"redeem_loyalty_points,omitempty"`
 }
 
 type OrderStatusUpdateInput struct {
@@ -125,6 +127,7 @@ type OrderOutput struct {
 	FulfilmentType          FulfilmentType    `json:"fulfilment_type"`
 	Status                  OrderStatus       `json:"status"`
 	SubtotalPaise           int64             `json:"subtotal_paise"`
+	DiscountPaise           int64             `json:"discount_paise"`
 	TotalPaise              int64             `json:"total_paise"`
 	DeliveryAddressSnapshot *string           `json:"delivery_address_snapshot,omitempty"`
 	PickupAddressSnapshot   *string           `json:"pickup_address_snapshot,omitempty"`

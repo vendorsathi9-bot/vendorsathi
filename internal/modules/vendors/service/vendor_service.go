@@ -307,3 +307,7 @@ func (s *VendorService) GetVendorDetail(ctx context.Context, vendorID uuid.UUID)
 		BusinessHours: hourOutputs,
 	}, nil
 }
+
+func (s *VendorService) ListVendors(ctx context.Context) ([]model.VendorListItem, error) {
+	return s.vendorRepo.ListVendors(ctx)
+}

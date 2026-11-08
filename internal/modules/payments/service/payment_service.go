@@ -1,10 +1,21 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"vendorsaathi/internal/config"
 	"vendorsaathi/internal/modules/payments/model"
 	"vendorsaathi/internal/modules/payments/repository"
 	"vendorsaathi/internal/shared"
@@ -197,3 +208,138 @@ func (s *PaymentService) GetRefunds(ctx context.Context, actorUserID uuid.UUID, 
 	}
 	return outputs, nil
 }
+
+// InitiateGatewayPayment creates an online payment order on Razorpay and returns the order token to the client.
+func (s *PaymentService) InitiateGatewayPayment(ctx context.Context, cfg config.PaymentConfig, actorUserID uuid.UUID, input model.InitiateGatewayPaymentInput) (*model.GatewayOrderResponse, error) {
+	if cfg.RazorpayKeyID == "" || cfg.RazorpayKeySecret == "" {
+		return nil, shared.NewValidationError("payment_gateway", "Razorpay credentials not configured on server (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)")
+	}
+
+	_, customerID, totalPaise, err := s.repo.GetOrderByID(ctx, input.OrderID)
+	if err != nil {
+		return nil, err
+	}
+	if customerID != actorUserID {
+		return nil, shared.NewForbidden("initiate payment for this order")
+	}
+
+	if input.AmountPaise > totalPaise {
+		return nil, shared.NewPaymentLimitExceeded(totalPaise, input.AmountPaise)
+	}
+
+	receiptID := fmt.Sprintf("rcpt_%s", input.OrderID.String()[:8])
+	payload := map[string]interface{}{
+		"amount":          input.AmountPaise, // in paise
+		"currency":        "INR",
+		"receipt":         receiptID,
+		"payment_capture": 1,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal razorpay payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.razorpay.com/v1/orders", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("create razorpay request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(cfg.RazorpayKeyID, cfg.RazorpayKeySecret)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("call razorpay api: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read razorpay response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("razorpay order creation failed (status %d): %s", resp.StatusCode, string(respBytes))
+	}
+
+	var rzpOrder struct {
+		ID       string `json:"id"`
+		Amount   int64  `json:"amount"`
+		Currency string `json:"currency"`
+	}
+	if err := json.Unmarshal(respBytes, &rzpOrder); err != nil {
+		return nil, fmt.Errorf("unmarshal razorpay response: %w", err)
+	}
+
+	return &model.GatewayOrderResponse{
+		GatewayOrderID: rzpOrder.ID,
+		AmountPaise:    rzpOrder.Amount,
+		Currency:       rzpOrder.Currency,
+		KeyID:          cfg.RazorpayKeyID, // Only public key ID sent to client
+	}, nil
+}
+
+// VerifyGatewayPayment cryptographically verifies Razorpay payment signature and records the confirmed payment.
+func (s *PaymentService) VerifyGatewayPayment(ctx context.Context, cfg config.PaymentConfig, actorUserID uuid.UUID, input model.VerifyGatewayPaymentInput) (*model.PaymentOutput, error) {
+	if cfg.RazorpayKeyID == "" || cfg.RazorpayKeySecret == "" {
+		return nil, shared.NewValidationError("payment_gateway", "Razorpay credentials not configured on server")
+	}
+
+	// 1. Verify HMAC-SHA256 signature
+	dataToSign := input.GatewayOrderID + "|" + input.GatewayPaymentID
+	mac := hmac.New(sha256.New, []byte(cfg.RazorpayKeySecret))
+	mac.Write([]byte(dataToSign))
+	expectedSig := hex.EncodeToString(mac.Sum(nil))
+
+	if !strings.EqualFold(expectedSig, input.GatewaySignature) {
+		return nil, shared.NewForbidden("payment signature verification failed")
+	}
+
+	// 2. Prevent duplicate processing
+	existing, err := s.repo.GetPaymentByReference(ctx, input.GatewayPaymentID)
+	if err == nil && existing != nil {
+		out := existing.ToOutput()
+		return &out, nil // Idempotent success
+	}
+
+	// 3. Verify order ownership
+	_, customerID, totalPaise, err := s.repo.GetOrderByID(ctx, input.OrderID)
+	if err != nil {
+		return nil, err
+	}
+	if customerID != actorUserID {
+		return nil, shared.NewForbidden("verify payment for this order")
+	}
+
+	// 4. Record payment with ONLINE method
+	ref := input.GatewayPaymentID
+	evidence := map[string]interface{}{
+		"gateway_order_id":   input.GatewayOrderID,
+		"gateway_payment_id": input.GatewayPaymentID,
+		"gateway_signature":  input.GatewaySignature,
+		"verified_at":        time.Now().UTC().Format(time.RFC3339),
+	}
+
+	recordInput := model.RecordPaymentInput{
+		OrderID:     input.OrderID,
+		Method:      "ONLINE",
+		AmountPaise: totalPaise,
+		Reference:   &ref,
+		Evidence:    evidence,
+	}
+
+	payment, err := s.repo.RecordPayment(ctx, recordInput, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 5. Mark payment as confirmed & verified
+	confirmed, err := s.repo.ConfirmPayment(ctx, payment.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := confirmed.ToOutput()
+	return &out, nil
+}
+

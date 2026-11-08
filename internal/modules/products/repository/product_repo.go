@@ -90,18 +90,18 @@ func (r *ProductRepository) UpdateCategory(ctx context.Context, id uuid.UUID, in
 
 func (r *ProductRepository) CreateProduct(ctx context.Context, product *model.Product) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO products (id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-	`, product.ID, product.VendorID, product.CategoryID, product.Name, product.Description, product.PricePaise, product.Currency, product.ImageObjectKey, product.Active, product.CreatedAt, product.UpdatedAt)
+		INSERT INTO products (id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`, product.ID, product.VendorID, product.CategoryID, product.Name, product.Description, product.PricePaise, product.CostPricePaise, product.Currency, product.ImageObjectKey, product.Active, product.CreatedAt, product.UpdatedAt)
 	return err
 }
 
 func (r *ProductRepository) GetProductByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
 	var product model.Product
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at
+		SELECT id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at
 		FROM products WHERE id = $1
-	`, id).Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt)
+	`, id).Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.CostPricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -123,7 +123,7 @@ func (r *ProductRepository) ResolveVendorID(ctx context.Context, idOrOwnerID uui
 
 func (r *ProductRepository) GetProductsByVendorID(ctx context.Context, vendorID uuid.UUID, limit int, cursor string, activeOnly bool) ([]model.Product, string, bool, error) {
 	query := `
-		SELECT id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at
+		SELECT id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at
 		FROM products WHERE vendor_id = $1
 	`
 	args := []interface{}{vendorID}
@@ -155,7 +155,7 @@ func (r *ProductRepository) GetProductsByVendorID(ctx context.Context, vendorID 
 	var products []model.Product
 	for rows.Next() {
 		var product model.Product
-		if err := rows.Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt); err != nil {
+		if err := rows.Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.CostPricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt); err != nil {
 			return nil, "", false, err
 		}
 		products = append(products, product)
@@ -176,7 +176,7 @@ func (r *ProductRepository) GetProductsByVendorID(ctx context.Context, vendorID 
 
 func (r *ProductRepository) GetActiveProductsByVendorID(ctx context.Context, vendorID uuid.UUID) ([]model.Product, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at
+		SELECT id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at
 		FROM products WHERE vendor_id = $1 AND active = TRUE ORDER BY name
 	`, vendorID)
 	if err != nil {
@@ -187,7 +187,7 @@ func (r *ProductRepository) GetActiveProductsByVendorID(ctx context.Context, ven
 	var products []model.Product
 	for rows.Next() {
 		var product model.Product
-		if err := rows.Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt); err != nil {
+		if err := rows.Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.CostPricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt); err != nil {
 			return nil, err
 		}
 		products = append(products, product)
@@ -202,19 +202,20 @@ func (r *ProductRepository) UpdateProduct(ctx context.Context, id uuid.UUID, inp
 		    name = COALESCE(NULLIF($2, ''), name),
 		    description = COALESCE($3, description),
 		    price_paise = COALESCE($4, price_paise),
-		    currency = COALESCE(NULLIF($5, ''), currency),
-		    image_object_key = COALESCE($6, image_object_key),
-		    active = COALESCE($7, active),
+		    cost_price_paise = COALESCE($5, cost_price_paise),
+		    currency = COALESCE(NULLIF($6, ''), currency),
+		    image_object_key = COALESCE($7, image_object_key),
+		    active = COALESCE($8, active),
 		    updated_at = NOW()
-		WHERE id = $8
-		RETURNING id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at
+		WHERE id = $9
+		RETURNING id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at
 	`
 	var product model.Product
 	err := r.pool.QueryRow(ctx, query,
-		input.CategoryID, input.Name, input.Description, input.PricePaise,
+		input.CategoryID, input.Name, input.Description, input.PricePaise, input.CostPricePaise,
 		input.Currency, input.ImageObjectKey, input.Active, id).Scan(
 		&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description,
-		&product.PricePaise, &product.Currency, &product.ImageObjectKey, &product.Active,
+		&product.PricePaise, &product.CostPricePaise, &product.Currency, &product.ImageObjectKey, &product.Active,
 		&product.CreatedAt, &product.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -229,8 +230,8 @@ func (r *ProductRepository) ArchiveProduct(ctx context.Context, id uuid.UUID) (*
 	var product model.Product
 	err := r.pool.QueryRow(ctx, `
 		UPDATE products SET active = FALSE, updated_at = NOW() WHERE id = $1
-		RETURNING id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at
-	`, id).Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt)
+		RETURNING id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at
+	`, id).Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.CostPricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -241,7 +242,7 @@ func (r *ProductRepository) ArchiveProduct(ctx context.Context, id uuid.UUID) (*
 }
 
 func (r *ProductRepository) GetProductsByCategoryID(ctx context.Context, categoryID uuid.UUID, activeOnly bool) ([]model.Product, error) {
-	query := `SELECT id, vendor_id, category_id, name, description, price_paise, currency, image_object_key, active, created_at, updated_at FROM products WHERE category_id = $1`
+	query := `SELECT id, vendor_id, category_id, name, description, price_paise, cost_price_paise, currency, image_object_key, active, created_at, updated_at FROM products WHERE category_id = $1`
 	args := []interface{}{categoryID}
 	if activeOnly {
 		query += ` AND active = TRUE`
@@ -257,7 +258,7 @@ func (r *ProductRepository) GetProductsByCategoryID(ctx context.Context, categor
 	var products []model.Product
 	for rows.Next() {
 		var product model.Product
-		if err := rows.Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt); err != nil {
+		if err := rows.Scan(&product.ID, &product.VendorID, &product.CategoryID, &product.Name, &product.Description, &product.PricePaise, &product.CostPricePaise, &product.Currency, &product.ImageObjectKey, &product.Active, &product.CreatedAt, &product.UpdatedAt); err != nil {
 			return nil, err
 		}
 		products = append(products, product)

@@ -18,9 +18,10 @@ type Config struct {
 	PasswordHash   PasswordConfig  `mapstructure:"PASSWORD_HASH"`
 	CORSOrigins    []string        `mapstructure:"CORS_ORIGINS"`
 	FCM            FCMConfig       `mapstructure:"FCM"`
-	Maps           MapsConfig      `mapstructure:"MAPS"`
+	Map            MapConfig       `mapstructure:"MAP"`
 	Weather        WeatherConfig   `mapstructure:"WEATHER"`
 	Storage        StorageConfig   `mapstructure:"STORAGE"`
+	Payment        PaymentConfig   `mapstructure:"PAYMENT"`
 	LogLevel       string          `mapstructure:"LOG_LEVEL"`
 	RequestTimeout time.Duration   `mapstructure:"REQUEST_TIMEOUT"`
 	Migration      MigrationConfig `mapstructure:"MIGRATION"`
@@ -48,8 +49,13 @@ type FCMConfig struct {
 	ProjectID       string `mapstructure:"PROJECT_ID"`
 }
 
-type MapsConfig struct {
-	APIKey string `mapstructure:"API_KEY"`
+type MapConfig struct {
+	Provider          string `mapstructure:"PROVIDER"`
+	TileURL           string `mapstructure:"TILE_URL"`
+	RoutingProvider   string `mapstructure:"ROUTING_PROVIDER"`
+	OSRMBaseURL       string `mapstructure:"OSRM_BASE_URL"`
+	GeocodingProvider string `mapstructure:"GEOCODING_PROVIDER"`
+	GeocodingBaseURL  string `mapstructure:"GEOCODING_BASE_URL"`
 }
 
 type WeatherConfig struct {
@@ -63,6 +69,11 @@ type StorageConfig struct {
 	SecretAccessKey string `mapstructure:"SECRET_ACCESS_KEY"`
 	Region          string `mapstructure:"REGION"`
 	UseSSL          bool   `mapstructure:"USE_SSL"`
+}
+
+type PaymentConfig struct {
+	RazorpayKeyID     string `mapstructure:"RAZORPAY_KEY_ID"`
+	RazorpayKeySecret string `mapstructure:"RAZORPAY_KEY_SECRET"`
 }
 
 type MigrationConfig struct {
@@ -100,6 +111,14 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("JWT.ACCESS_TOKEN_TTL", "JWT_ACCESS_TOKEN_TTL")
 	_ = v.BindEnv("JWT.REFRESH_TOKEN_TTL", "JWT_REFRESH_TOKEN_TTL")
 	_ = v.BindEnv("MIGRATION.PATH", "MIGRATION_PATH")
+	_ = v.BindEnv("MAP.PROVIDER", "MAP_PROVIDER")
+	_ = v.BindEnv("MAP.TILE_URL", "MAP_TILE_URL")
+	_ = v.BindEnv("MAP.ROUTING_PROVIDER", "ROUTING_PROVIDER")
+	_ = v.BindEnv("MAP.OSRM_BASE_URL", "OSRM_BASE_URL")
+	_ = v.BindEnv("MAP.GEOCODING_PROVIDER", "GEOCODING_PROVIDER")
+	_ = v.BindEnv("MAP.GEOCODING_BASE_URL", "GEOCODING_BASE_URL")
+	_ = v.BindEnv("PAYMENT.RAZORPAY_KEY_ID", "RAZORPAY_KEY_ID")
+	_ = v.BindEnv("PAYMENT.RAZORPAY_KEY_SECRET", "RAZORPAY_KEY_SECRET")
 
 	setDefaults(v)
 
@@ -162,6 +181,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("PASSWORD_HASH.KEY_LENGTH", 32)
 
 	v.SetDefault("STORAGE.USE_SSL", true)
+
+	v.SetDefault("MAP.PROVIDER", "maplibre")
+	v.SetDefault("MAP.TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+	v.SetDefault("MAP.ROUTING_PROVIDER", "osrm")
+	v.SetDefault("MAP.OSRM_BASE_URL", "https://router.project-osrm.org")
+	v.SetDefault("MAP.GEOCODING_PROVIDER", "nominatim")
+	v.SetDefault("MAP.GEOCODING_BASE_URL", "https://nominatim.openstreetmap.org")
 }
 
 func (c *Config) Validate() error {

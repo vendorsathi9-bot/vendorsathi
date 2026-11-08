@@ -17,13 +17,14 @@ const (
 )
 
 type User struct {
-	ID           uuid.UUID  `db:"id"`
-	Phone        string     `db:"phone"`
-	Email        *string    `db:"email"`
-	PasswordHash string     `db:"password_hash"`
-	Status       UserStatus `db:"status"`
-	CreatedAt    time.Time  `db:"created_at"`
-	UpdatedAt    time.Time  `db:"updated_at"`
+	ID                uuid.UUID  `db:"id"`
+	Phone             string     `db:"phone"`
+	Email             *string    `db:"email"`
+	PasswordHash      string     `db:"password_hash"`
+	Status            UserStatus `db:"status"`
+	PreferredLanguage string     `db:"preferred_language"`
+	CreatedAt         time.Time  `db:"created_at"`
+	UpdatedAt         time.Time  `db:"updated_at"`
 }
 
 type RefreshSession struct {
@@ -84,11 +85,12 @@ type TokenOutput struct {
 }
 
 type UserInfo struct {
-	ID     uuid.UUID  `json:"id"`
-	Phone  string     `json:"phone"`
-	Email  *string    `json:"email,omitempty"`
-	Status UserStatus `json:"status"`
-	Roles  []string   `json:"roles"`
+	ID                uuid.UUID  `json:"id"`
+	Phone             string     `json:"phone"`
+	Email             *string    `json:"email,omitempty"`
+	Status            UserStatus `json:"status"`
+	PreferredLanguage string     `json:"preferred_language"`
+	Roles             []string   `json:"roles"`
 }
 
 type MeOutput struct {
@@ -99,11 +101,12 @@ type MeOutput struct {
 
 func (u *User) ToUserInfo(roles []string) UserInfo {
 	return UserInfo{
-		ID:     u.ID,
-		Phone:  u.Phone,
-		Email:  u.Email,
-		Status: u.Status,
-		Roles:  roles,
+		ID:                u.ID,
+		Phone:             u.Phone,
+		Email:             u.Email,
+		Status:            u.Status,
+		PreferredLanguage: u.PreferredLanguage,
+		Roles:             roles,
 	}
 }
 

@@ -74,7 +74,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, input
 		}
 	}
 
-	user, err := s.userRepo.UpdateProfile(ctx, userID, input.Phone, input.Email)
+	user, err := s.userRepo.UpdateProfile(ctx, userID, input.Phone, input.Email, input.PreferredLanguage)
 	if err != nil {
 		return nil, err
 	}

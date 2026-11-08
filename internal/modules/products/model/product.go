@@ -16,17 +16,18 @@ type Category struct {
 }
 
 type Product struct {
-	ID             uuid.UUID  `db:"id"`
-	VendorID       uuid.UUID  `db:"vendor_id"`
-	CategoryID     *uuid.UUID `db:"category_id"`
-	Name           string     `db:"name"`
-	Description    *string    `db:"description"`
-	PricePaise     int64      `db:"price_paise"`
-	Currency       string     `db:"currency"`
-	ImageObjectKey *string    `db:"image_object_key"`
-	Active         bool       `db:"active"`
-	CreatedAt      time.Time  `db:"created_at"`
-	UpdatedAt      time.Time  `db:"updated_at"`
+	ID             uuid.UUID  `db:"id" json:"id"`
+	VendorID       uuid.UUID  `db:"vendor_id" json:"vendor_id"`
+	CategoryID     *uuid.UUID `db:"category_id" json:"category_id"`
+	Name           string     `db:"name" json:"name"`
+	Description    *string    `db:"description" json:"description"`
+	PricePaise     int64      `db:"price_paise" json:"price_paise"`
+	CostPricePaise int64      `db:"cost_price_paise" json:"cost_price_paise"`
+	Currency       string     `db:"currency" json:"currency"`
+	ImageObjectKey *string    `db:"image_object_key" json:"image_object_key"`
+	Active         bool       `db:"active" json:"active"`
+	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 }
 
 type CreateCategoryInput struct {
@@ -44,6 +45,7 @@ type CreateProductInput struct {
 	Name           string     `json:"name" binding:"required"`
 	Description    *string    `json:"description,omitempty"`
 	PricePaise     int64      `json:"price_paise" binding:"required,min=0"`
+	CostPricePaise *int64     `json:"cost_price_paise,omitempty"`
 	Currency       *string    `json:"currency,omitempty"`
 	ImageObjectKey *string    `json:"image_object_key,omitempty"`
 }
@@ -53,6 +55,7 @@ type UpdateProductInput struct {
 	Name           *string    `json:"name,omitempty"`
 	Description    *string    `json:"description,omitempty"`
 	PricePaise     *int64     `json:"price_paise,omitempty"`
+	CostPricePaise *int64     `json:"cost_price_paise,omitempty"`
 	Currency       *string    `json:"currency,omitempty"`
 	ImageObjectKey *string    `json:"image_object_key,omitempty"`
 	Active         *bool      `json:"active,omitempty"`
@@ -74,6 +77,7 @@ type ProductOutput struct {
 	Name           string     `json:"name"`
 	Description    *string    `json:"description,omitempty"`
 	PricePaise     int64      `json:"price_paise"`
+	CostPricePaise int64      `json:"cost_price_paise"`
 	Currency       string     `json:"currency"`
 	ImageObjectKey *string    `json:"image_object_key,omitempty"`
 	Active         bool       `json:"active"`
@@ -106,6 +110,7 @@ func (p *Product) ToOutput() ProductOutput {
 		Name:           p.Name,
 		Description:    p.Description,
 		PricePaise:     p.PricePaise,
+		CostPricePaise: p.CostPricePaise,
 		Currency:       p.Currency,
 		ImageObjectKey: p.ImageObjectKey,
 		Active:         p.Active,

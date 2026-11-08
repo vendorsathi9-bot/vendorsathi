@@ -34,9 +34,9 @@ func (r *UserRepository) CreateUserWithStatus(ctx context.Context, phone, email,
 	err := r.db(ctx).QueryRow(ctx, `
 		INSERT INTO users (phone, email, password_hash, status)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, phone, email, password_hash, status, created_at, updated_at
+		RETURNING id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 	`, phone, nullString(email), passwordHash, status).Scan(
-		&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -50,9 +50,9 @@ func (r *UserRepository) CreateUserWithStatus(ctx context.Context, phone, email,
 func (r *UserRepository) GetUserByPhone(ctx context.Context, phone string) (*model.User, error) {
 	var user model.User
 	err := r.db(ctx).QueryRow(ctx, `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users WHERE phone = $1
-	`, phone).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, phone).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -65,9 +65,9 @@ func (r *UserRepository) GetUserByPhone(ctx context.Context, phone string) (*mod
 func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
 	err := r.db(ctx).QueryRow(ctx, `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users WHERE email = $1
-	`, email).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, email).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -80,9 +80,9 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 func (r *UserRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var user model.User
 	err := r.db(ctx).QueryRow(ctx, `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users WHERE id = $1
-	`, id).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, id).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound

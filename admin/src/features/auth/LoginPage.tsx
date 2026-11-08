@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../core/auth/AuthContext';
-import { ShieldCheck, Lock, Phone } from 'lucide-react';
+import { useLanguage } from '../../core/i18n/LanguageContext';
+import { ShieldCheck, Lock, Phone, Globe } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
+  const { language, toggleLanguage } = useLanguage();
   const [phone, setPhone] = useState('+919876543210');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('AdminPassword123!');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -16,7 +18,7 @@ export const LoginPage: React.FC = () => {
     try {
       await login(phone, password);
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || (language === 'kn' ? 'ಪ್ರವೇಶ ವಿಫಲವಾಗಿದೆ' : 'Login failed'));
     } finally {
       setLoading(false);
     }
@@ -24,13 +26,30 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '1rem' }}>
-      <div style={{ maxWidth: '420px', width: '100%', background: 'white', borderRadius: '1rem', padding: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}>
+      <div style={{ maxWidth: '420px', width: '100%', background: 'white', borderRadius: '1rem', padding: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', position: 'relative' }}>
+        {/* Language switcher */}
+        <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem' }}>
+          <button
+            onClick={toggleLanguage}
+            className="btn btn-secondary"
+            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+            title="Switch Language"
+          >
+            <Globe size={13} />
+            {language === 'en' ? 'ಕನ್ನಡ' : 'English'}
+          </button>
+        </div>
+
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', marginBottom: '1rem' }}>
             <ShieldCheck size={36} />
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>VendorSaathi Admin</h1>
-          <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}>Management & Operational Portal</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>
+            {language === 'kn' ? 'ವೆಂಡರ್‌ಸಾಥಿ ಅಡ್ಮಿನ್' : 'VendorSaathi Admin'}
+          </h1>
+          <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}>
+            {language === 'kn' ? 'ಆಡಳಿತ ಮತ್ತು ಕಾರ್ಯಾಚರಣೆ ಪೋರ್ಟಲ್' : 'Management & Operational Portal'}
+          </p>
         </div>
 
         {error && (
@@ -42,7 +61,7 @@ export const LoginPage: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '0.5rem' }}>
-              Phone Number
+              {language === 'kn' ? 'ದೂರವಾಣಿ ಸಂಖ್ಯೆ' : 'Phone Number'}
             </label>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
@@ -61,7 +80,7 @@ export const LoginPage: React.FC = () => {
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '0.5rem' }}>
-              Password
+              {language === 'kn' ? 'ಪಾಸ್‌ವರ್ಡ್' : 'Password'}
             </label>
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
@@ -84,9 +103,24 @@ export const LoginPage: React.FC = () => {
             className="btn btn-primary"
             style={{ width: '100%', justifyContent: 'center', padding: '0.75rem', fontSize: '0.95rem' }}
           >
-            {loading ? 'Authenticating...' : 'Sign In as Admin'}
+            {loading 
+              ? (language === 'kn' ? 'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...' : 'Authenticating...') 
+              : (language === 'kn' ? 'ಅಡ್ಮಿನ್ ಆಗಿ ಪ್ರವೇಶಿಸಿ' : 'Sign In as Admin')}
           </button>
         </form>
+
+        <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setPhone('+919876543210');
+              setPassword('AdminPassword123!');
+            }}
+            style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'underline' }}
+          >
+            {language === 'kn' ? 'ಡೆಮೊ ಅಡ್ಮಿನ್ ಮಾಹಿತಿ ತುಂಬಿ' : 'Fill demo admin credentials'}
+          </button>
+        </div>
       </div>
     </div>
   );

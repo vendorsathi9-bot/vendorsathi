@@ -262,3 +262,33 @@ func (r *VendorRepository) GetBusinessHours(ctx context.Context, vendorID uuid.U
 	}
 	return hours, rows.Err()
 }
+
+func (r *VendorRepository) ListVendors(ctx context.Context) ([]model.VendorListItem, error) {
+	query := `
+		SELECT v.id, v.owner_user_id, v.business_name, v.description, v.phone, v.status, v.availability_status, v.created_at,
+		       vl.address_line1, vl.city,
+		       (SELECT COUNT(*) FROM products p WHERE p.vendor_id = v.id) as product_count
+		FROM vendor_profiles v
+		LEFT JOIN vendor_locations vl ON v.id = vl.vendor_id AND vl.is_primary = TRUE
+		ORDER BY v.created_at DESC
+	`
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var vendors []model.VendorListItem
+	for rows.Next() {
+		var v model.VendorListItem
+		if err := rows.Scan(
+			&v.ID, &v.OwnerUserID, &v.BusinessName, &v.Description, &v.Phone,
+			&v.Status, &v.AvailabilityStatus, &v.CreatedAt,
+			&v.AddressLine1, &v.City, &v.ProductCount,
+		); err != nil {
+			return nil, err
+		}
+		vendors = append(vendors, v)
+	}
+	return vendors, rows.Err()
+}

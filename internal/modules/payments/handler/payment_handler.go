@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"vendorsaathi/internal/config"
 	"vendorsaathi/internal/modules/payments/model"
 	"vendorsaathi/internal/modules/payments/service"
 	"vendorsaathi/internal/platform/httpx"
@@ -13,25 +14,31 @@ import (
 
 type PaymentHandler struct {
 	svc *service.PaymentService
+	cfg config.PaymentConfig
 }
 
-func NewPaymentHandler(svc *service.PaymentService) *PaymentHandler {
-	return &PaymentHandler{svc: svc}
+func NewPaymentHandler(svc *service.PaymentService, cfg config.PaymentConfig) *PaymentHandler {
+	return &PaymentHandler{svc: svc, cfg: cfg}
 }
 
 // parseActorUserID extracts and parses the actor's user ID from gin context.
 func parseActorUserID(c *gin.Context) (uuid.UUID, bool) {
-	userIDStr, exists := c.Get("user_id")
+	val, exists := c.Get("user_id")
 	if !exists {
 		httpx.ErrorUnauthorized(c, "user not authenticated")
 		return uuid.Nil, false
 	}
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		httpx.ErrorInternal(c, "invalid user id in token")
-		return uuid.Nil, false
+	if id, ok := val.(uuid.UUID); ok {
+		return id, true
 	}
-	return userID, true
+	if str, ok := val.(string); ok {
+		id, err := uuid.Parse(str)
+		if err == nil {
+			return id, true
+		}
+	}
+	httpx.ErrorInternal(c, "invalid user id in token")
+	return uuid.Nil, false
 }
 
 // RecordPayment handles POST /payments
@@ -156,6 +163,50 @@ func (h *PaymentHandler) GetRefunds(c *gin.Context) {
 	httpx.RespondOK(c, outputs)
 }
 
+// InitiateGatewayPayment handles POST /payments/gateway/initiate
+func (h *PaymentHandler) InitiateGatewayPayment(c *gin.Context) {
+	actorUserID, ok := parseActorUserID(c)
+	if !ok {
+		return
+	}
+
+	var input model.InitiateGatewayPaymentInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httpx.ErrorBadRequest(c, "invalid request body: "+err.Error(), nil)
+		return
+	}
+
+	output, err := h.svc.InitiateGatewayPayment(c.Request.Context(), h.cfg, actorUserID, input)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	httpx.RespondOK(c, output)
+}
+
+// VerifyGatewayPayment handles POST /payments/gateway/verify
+func (h *PaymentHandler) VerifyGatewayPayment(c *gin.Context) {
+	actorUserID, ok := parseActorUserID(c)
+	if !ok {
+		return
+	}
+
+	var input model.VerifyGatewayPaymentInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httpx.ErrorBadRequest(c, "invalid request body: "+err.Error(), nil)
+		return
+	}
+
+	output, err := h.svc.VerifyGatewayPayment(c.Request.Context(), h.cfg, actorUserID, input)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	httpx.RespondOK(c, output)
+}
+
 func (h *PaymentHandler) handleError(c *gin.Context, err error) {
 	var appErr *shared.AppError
 	if errors.As(err, &appErr) {
@@ -166,6 +217,8 @@ func (h *PaymentHandler) handleError(c *gin.Context, err error) {
 			httpx.ErrorForbidden(c, appErr.Message)
 		case errors.Is(appErr.Err, shared.ErrConflict):
 			httpx.ErrorConflict(c, appErr.Message, nil)
+		case errors.Is(appErr.Err, shared.ErrValidationFailed):
+			httpx.ErrorBadRequest(c, appErr.Message, nil)
 		case errors.Is(appErr.Err, shared.ErrPaymentLimitExceeded):
 			details := make([]httpx.ErrorDetail, 0, len(appErr.Details))
 			for k, v := range appErr.Details {

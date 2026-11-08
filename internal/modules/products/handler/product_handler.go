@@ -368,6 +368,23 @@ func (h *ProductHandler) GetProductsByCategory(c *gin.Context) {
 	httpx.RespondOK(c, output)
 }
 
+func (h *ProductHandler) GetVendorProducts(c *gin.Context) {
+	vendorIDStr := c.Param("vendorId")
+	vendorID, err := uuid.Parse(vendorIDStr)
+	if err != nil {
+		httpx.ErrorBadRequest(c, "invalid vendor id", nil)
+		return
+	}
+
+	output, err := h.productService.GetVendorProducts(c.Request.Context(), vendorID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	httpx.RespondOK(c, output)
+}
+
 func (h *ProductHandler) handleError(c *gin.Context, err error) {
 	var appErr *shared.AppError
 	if errors.As(err, &appErr) {

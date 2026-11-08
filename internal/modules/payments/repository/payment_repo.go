@@ -216,3 +216,40 @@ func (r *PaymentRepository) GetVendorProfileByOwnerUserID(ctx context.Context, o
 	}
 	return vendorID, nil
 }
+
+// GetPaymentByReference returns a payment by its reference field (e.g. gateway payment ID).
+func (r *PaymentRepository) GetPaymentByReference(ctx context.Context, reference string) (*model.Payment, error) {
+	var p model.Payment
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, order_id, method, amount_paise, status, verification_status, recorded_by, reference, evidence, idempotency_key, created_at
+		FROM payments WHERE reference = $1 LIMIT 1
+	`, reference).Scan(&p.ID, &p.OrderID, &p.Method, &p.AmountPaise, &p.Status, &p.VerificationStatus,
+		&p.RecordedBy, &p.Reference, &p.Evidence, &p.IdempotencyKey, &p.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, shared.ErrNotFound
+		}
+		return nil, err
+	}
+	return &p, nil
+}
+
+// ConfirmPayment marks a payment as confirmed and verified.
+func (r *PaymentRepository) ConfirmPayment(ctx context.Context, paymentID uuid.UUID) (*model.Payment, error) {
+	var p model.Payment
+	err := r.pool.QueryRow(ctx, `
+		UPDATE payments
+		SET status = 'CONFIRMED', verification_status = 'VERIFIED'
+		WHERE id = $1
+		RETURNING id, order_id, method, amount_paise, status, verification_status, recorded_by, reference, evidence, idempotency_key, created_at
+	`, paymentID).Scan(&p.ID, &p.OrderID, &p.Method, &p.AmountPaise, &p.Status, &p.VerificationStatus,
+		&p.RecordedBy, &p.Reference, &p.Evidence, &p.IdempotencyKey, &p.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, shared.ErrNotFound
+		}
+		return nil, err
+	}
+	return &p, nil
+}
+

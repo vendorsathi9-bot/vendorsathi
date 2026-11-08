@@ -141,7 +141,78 @@ paths:
             default: 5.0
       responses:
         '200':
-          description: Array of nearby vendors with distance in km
+          description: Array of nearby vendors with distance in km and coordinates
+
+  /mobility/route:
+    get:
+      summary: Calculate road route, distance, travel duration, and GeoJSON geometry using OSRM
+      parameters:
+        - name: origin_lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: origin_lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: dest_lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: dest_lng
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Route response containing distance in meters, duration in seconds, GeoJSON LineString coordinates, attribution, and open navigation URL
+
+  /mobility/config:
+    get:
+      summary: Get active map provider configuration (tile URL, routing provider, geocoding provider)
+      responses:
+        '200':
+          description: Map provider metadata and tile URL
+
+  /mobility/geocode:
+    get:
+      summary: Forward geocode an address to coordinates using Nominatim
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: List of matching geocoded locations
+
+  /mobility/reverse-geocode:
+    get:
+      summary: Reverse geocode latitude and longitude to address using Nominatim
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Reverse geocoded address information
 
   /carts/me:
     get:

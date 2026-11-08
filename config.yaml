@@ -31,8 +31,13 @@ FCM:
   CREDENTIALS_PATH: ""
   PROJECT_ID: ""
 
-MAPS:
-  API_KEY: ""
+MAP:
+  PROVIDER: "maplibre"
+  TILE_URL: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  ROUTING_PROVIDER: "osrm"
+  OSRM_BASE_URL: "https://router.project-osrm.org"
+  GEOCODING_PROVIDER: "nominatim"
+  GEOCODING_BASE_URL: "https://nominatim.openstreetmap.org"
 
 WEATHER:
   API_KEY: ""
@@ -44,3 +49,7 @@ STORAGE:
   SECRET_ACCESS_KEY: "minioadmin"
   REGION: "us-east-1"
   USE_SSL: false
+
+PAYMENT:
+  RAZORPAY_KEY_ID: ""
+  RAZORPAY_KEY_SECRET: ""

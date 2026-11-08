@@ -28,6 +28,9 @@ import (
 	customershandler "vendorsaathi/internal/modules/customers/handler"
 	customersrepository "vendorsaathi/internal/modules/customers/repository"
 	customersservice "vendorsaathi/internal/modules/customers/service"
+	deliveryhandler "vendorsaathi/internal/modules/delivery/handler"
+	deliveryrepository "vendorsaathi/internal/modules/delivery/repository"
+	deliveryservice "vendorsaathi/internal/modules/delivery/service"
 	inventoryHandler "vendorsaathi/internal/modules/inventory/handler"
 	inventoryRepository "vendorsaathi/internal/modules/inventory/repository"
 	inventoryService "vendorsaathi/internal/modules/inventory/service"
@@ -46,6 +49,9 @@ import (
 	productsHandler "vendorsaathi/internal/modules/products/handler"
 	productsRepository "vendorsaathi/internal/modules/products/repository"
 	productsService "vendorsaathi/internal/modules/products/service"
+	reviewshandler "vendorsaathi/internal/modules/reviews/handler"
+	reviewsrepository "vendorsaathi/internal/modules/reviews/repository"
+	reviewsservice "vendorsaathi/internal/modules/reviews/service"
 	synchandler "vendorsaathi/internal/modules/sync/handler"
 	syncrepository "vendorsaathi/internal/modules/sync/repository"
 	syncservice "vendorsaathi/internal/modules/sync/service"
@@ -87,6 +93,8 @@ type Handlers struct {
 	sync          *synchandler.SyncHandler
 	mobility      *mobilityhandler.MobilityHandler
 	analytics     *analyticshandler.AnalyticsHandler
+	reviews       *reviewshandler.ReviewHandler
+	delivery      *deliveryhandler.DeliveryHandler
 }
 
 func New(cfg *config.Config) (*Application, error) {
@@ -140,7 +148,7 @@ func New(cfg *config.Config) (*Application, error) {
 
 	paymentsRepo := paymentsrepository.NewPaymentRepository(dbPool)
 	paymentsService := paymentsservice.NewPaymentService(paymentsRepo)
-	paymentsHandler := paymentshandler.NewPaymentHandler(paymentsService)
+	paymentsHandler := paymentshandler.NewPaymentHandler(paymentsService, cfg.Payment)
 
 	udhaarRepo := udhaarrepository.NewUdhaarRepository(dbPool)
 	udhaarService := udhaarservice.NewUdhaarService(udhaarRepo)
@@ -159,12 +167,20 @@ func New(cfg *config.Config) (*Application, error) {
 	syncHandler := synchandler.NewSyncHandler(syncService)
 
 	mobilityRepo := mobilityrepository.NewMobilityRepository(dbPool)
-	mobilityService := mobilityservice.NewMobilityService(mobilityRepo)
-	mobilityHandler := mobilityhandler.NewMobilityHandler(mobilityService)
+	mobilityService := mobilityservice.NewMobilityService(mobilityRepo, cfg.Map)
+	mobilityHandler := mobilityhandler.NewMobilityHandler(mobilityService, cfg.Map)
 
 	analyticsRepo := analyticsrepository.NewAnalyticsRepository(dbPool)
 	analyticsService := analyticsservice.NewAnalyticsService(analyticsRepo)
 	analyticsHandler := analyticshandler.NewAnalyticsHandler(analyticsService)
+
+	reviewsRepo := reviewsrepository.NewReviewRepository(dbPool)
+	reviewsService := reviewsservice.NewReviewService(reviewsRepo)
+	reviewsHandler := reviewshandler.NewReviewHandler(reviewsService)
+
+	deliveryRepo := deliveryrepository.NewDeliveryRepository(dbPool)
+	deliveryService := deliveryservice.NewDeliveryService(deliveryRepo)
+	deliveryHandler := deliveryhandler.NewDeliveryHandler(deliveryService)
 
 	handlers := Handlers{
 		auth:          authHandler,
@@ -182,6 +198,8 @@ func New(cfg *config.Config) (*Application, error) {
 		sync:          syncHandler,
 		mobility:      mobilityHandler,
 		analytics:     analyticsHandler,
+		reviews:       reviewsHandler,
+		delivery:      deliveryHandler,
 	}
 
 	router := setupRouter(cfg, jwtManager, handlers, dbPool)
@@ -235,6 +253,10 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 
 	// Public discovery routes
 	router.GET("/api/v1/mobility/nearby-vendors", h.mobility.FindNearbyVendors)
+	router.GET("/api/v1/mobility/route", h.mobility.GetRoute)
+	router.GET("/api/v1/mobility/config", h.mobility.GetMapConfig)
+	router.GET("/api/v1/mobility/geocode", h.mobility.Geocode)
+	router.GET("/api/v1/mobility/reverse-geocode", h.mobility.ReverseGeocode)
 
 	// Auth routes
 	authGroup := router.Group("/api/v1/auth")
@@ -267,6 +289,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 		// Vendors routes
 		vendorsGroup := protected.Group("/vendors")
 		{
+			vendorsGroup.GET("", h.vendors.ListVendors)
 			vendorsGroup.POST("/profile", h.vendors.CreateProfile)
 			vendorsGroup.GET("/profile/me", h.vendors.GetMyProfile)
 			vendorsGroup.PATCH("/profile/me", h.vendors.UpdateMyProfile)
@@ -304,6 +327,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			productsGroup.POST("", h.products.CreateProduct)
 			productsGroup.GET("", h.products.GetMyProducts)
 			productsGroup.GET("/active", h.products.GetMyActiveProducts)
+			productsGroup.GET("/vendor/:vendorId", h.products.GetVendorProducts)
 			productsGroup.GET("/:id", h.products.GetProductByID)
 			productsGroup.PATCH("/:id", h.products.UpdateProduct)
 			productsGroup.DELETE("/:id", h.products.ArchiveProduct)
@@ -366,6 +390,8 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			paymentsGroup.POST("/:id/verify", h.payments.VerifyPayment)
 			paymentsGroup.POST("/:id/refunds", h.payments.RecordRefund)
 			paymentsGroup.GET("/:id/refunds", h.payments.GetRefunds)
+			paymentsGroup.POST("/gateway/initiate", h.payments.InitiateGatewayPayment)
+			paymentsGroup.POST("/gateway/verify", h.payments.VerifyGatewayPayment)
 		}
 
 		// Udhaar routes
@@ -400,7 +426,28 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 		analyticsGroup := protected.Group("/analytics")
 		{
 			analyticsGroup.GET("/vendor/summary", h.analytics.GetVendorSummary)
+			analyticsGroup.GET("/vendor/detailed", h.analytics.GetDetailedVendorAnalytics)
+			analyticsGroup.GET("/vendor/demand-forecast", h.analytics.GetDemandForecast)
+			analyticsGroup.POST("/expenses", h.analytics.CreateExpense)
+			analyticsGroup.GET("/expenses", h.analytics.GetExpenses)
+			analyticsGroup.DELETE("/expenses/:id", h.analytics.DeleteExpense)
+			analyticsGroup.GET("/weather", h.analytics.GetWeather)
 			analyticsGroup.GET("/platform/overview", h.analytics.GetPlatformOverview)
+		}
+
+		// Reviews routes
+		reviewsGroup := protected.Group("/reviews")
+		{
+			reviewsGroup.POST("", h.reviews.CreateReview)
+			reviewsGroup.GET("/vendor/:vendorId", h.reviews.GetVendorReviews)
+			reviewsGroup.GET("/admin", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.reviews.GetAllReviews)
+			reviewsGroup.PATCH("/:id/moderate", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.reviews.ModerateReview)
+		}
+
+		// Loyalty routes
+		loyaltyGroup := protected.Group("/loyalty")
+		{
+			loyaltyGroup.GET("/me", h.reviews.GetMyLoyalty)
 		}
 
 		// Audit routes (Admin only)
@@ -408,6 +455,18 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 		auditGroup.Use(middleware.RequireRole("ADMIN", "SUPER_ADMIN"))
 		{
 			auditGroup.GET("", h.audit.ListAuditLogs)
+		}
+
+		// Delivery routes
+		deliveryGroup := protected.Group("/delivery")
+		{
+			deliveryGroup.POST("/orders/:orderId/assign", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.delivery.AssignDelivery)
+			deliveryGroup.GET("/admin/assignments", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.delivery.ListAllAssignments)
+			deliveryGroup.GET("/agent/assignments", middleware.RequireRole("DELIVERY_AGENT"), h.delivery.GetMyAssignments)
+			deliveryGroup.PATCH("/orders/:orderId/status", middleware.RequireRole("DELIVERY_AGENT"), h.delivery.UpdateDeliveryStatus)
+			deliveryGroup.POST("/orders/:orderId/location", middleware.RequireRole("DELIVERY_AGENT"), h.delivery.UpdateLocation)
+			deliveryGroup.GET("/orders/:orderId/assignment", h.delivery.GetAssignment)
+			deliveryGroup.GET("/orders/:orderId/location", h.delivery.GetLocation)
 		}
 	}
 

@@ -59,6 +59,20 @@ type BusinessHour struct {
 	IsClosed  bool      `db:"is_closed"`
 }
 
+type VendorListItem struct {
+	ID                 uuid.UUID          `json:"id"`
+	OwnerUserID        uuid.UUID          `json:"owner_user_id"`
+	BusinessName       string             `json:"business_name"`
+	Description        *string            `json:"description,omitempty"`
+	Phone              string             `json:"phone"`
+	Status             VendorStatus       `json:"status"`
+	AvailabilityStatus AvailabilityStatus `json:"availability_status"`
+	AddressLine1       *string            `json:"address_line1,omitempty"`
+	City               *string            `json:"city,omitempty"`
+	ProductCount       int64              `json:"product_count"`
+	CreatedAt          time.Time          `json:"created_at"`
+}
+
 type CreateVendorProfileInput struct {
 	BusinessName string  `json:"business_name" binding:"required"`
 	Description  *string `json:"description,omitempty"`

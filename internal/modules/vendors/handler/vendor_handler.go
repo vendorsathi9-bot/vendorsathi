@@ -129,6 +129,15 @@ func (h *VendorHandler) GetProfileByID(c *gin.Context) {
 	httpx.RespondOK(c, output)
 }
 
+func (h *VendorHandler) ListVendors(c *gin.Context) {
+	vendors, err := h.vendorService.ListVendors(c.Request.Context())
+	if err != nil {
+		httpx.ErrorInternal(c, err.Error())
+		return
+	}
+	httpx.RespondOK(c, vendors)
+}
+
 func (h *VendorHandler) UpdateProfileStatus(c *gin.Context) {
 	actorIDStr, _ := c.Get("user_id")
 	actorID, _ := uuid.Parse(actorIDStr.(string))

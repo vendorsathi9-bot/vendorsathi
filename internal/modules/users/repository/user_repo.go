@@ -23,9 +23,9 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var user model.User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users WHERE id = $1
-	`, id).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, id).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -38,9 +38,9 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User
 func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (*model.User, error) {
 	var user model.User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users WHERE phone = $1
-	`, phone).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, phone).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -53,9 +53,9 @@ func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (*model.U
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users WHERE email = $1
-	`, email).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	`, email).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -65,16 +65,17 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.U
 	return &user, nil
 }
 
-func (r *UserRepository) UpdateProfile(ctx context.Context, id uuid.UUID, phone, email string) (*model.User, error) {
+func (r *UserRepository) UpdateProfile(ctx context.Context, id uuid.UUID, phone, email, preferredLanguage string) (*model.User, error) {
 	var user model.User
 	err := r.pool.QueryRow(ctx, `
 		UPDATE users
 		SET phone = COALESCE(NULLIF($1, ''), phone),
 		    email = COALESCE(NULLIF($2, ''), email),
+		    preferred_language = COALESCE(NULLIF($3, ''), preferred_language),
 		    updated_at = NOW()
-		WHERE id = $3
-		RETURNING id, phone, email, password_hash, status, created_at, updated_at
-	`, phone, email, id).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+		WHERE id = $4
+		RETURNING id, phone, email, password_hash, status, preferred_language, created_at, updated_at
+	`, phone, email, preferredLanguage, id).Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, shared.ErrNotFound
@@ -196,7 +197,7 @@ func (r *UserRepository) GetRoleByCode(ctx context.Context, code string) (*model
 
 func (r *UserRepository) ListUsers(ctx context.Context, limit int, cursor string, status *model.UserStatus) ([]model.User, string, bool, error) {
 	query := `
-		SELECT id, phone, email, password_hash, status, created_at, updated_at
+		SELECT id, phone, email, password_hash, status, preferred_language, created_at, updated_at
 		FROM users
 	`
 	args := []interface{}{}
@@ -230,7 +231,7 @@ func (r *UserRepository) ListUsers(ctx context.Context, limit int, cursor string
 	var users []model.User
 	for rows.Next() {
 		var user model.User
-		if err := rows.Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		if err := rows.Scan(&user.ID, &user.Phone, &user.Email, &user.PasswordHash, &user.Status, &user.PreferredLanguage, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, "", false, err
 		}
 		users = append(users, user)
