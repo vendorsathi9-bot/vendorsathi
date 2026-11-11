@@ -39,7 +39,7 @@ MAP:
   # Optional raster XYZ tile endpoint for the legacy /mobility/tiles proxy.
   # Leave blank unless you explicitly configure a raster provider.
   TILE_URL: ""
-  UPSTREAM_TILE_URL: ""
+  UPSTREAM_TILE_URL: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
   USER_AGENT: "VendorSaathi/1.0 (+https://vendorsaathi.in; contact: admin@vendorsaathi.in)"
   API_KEY: ""
   ATTRIBUTION: "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
