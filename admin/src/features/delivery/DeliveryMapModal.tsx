@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ApiClient, DeliveryAssignment, DeliveryLocation, RouteData } from '../../core/api/apiClient';
+import { ApiClient, DeliveryAssignment, DeliveryLocation, RouteData, DEFAULT_MAP_STYLE_URL } from '../../core/api/apiClient';
 import { X, Navigation, MapPin, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
+
+const DEFAULT_MAP_ATTRIBUTION = '© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors';
 
 interface DeliveryMapModalProps {
   assignment: DeliveryAssignment;
@@ -19,6 +21,7 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
   const [loading, setLoading] = useState(true);
   const [routeLoading, setRouteLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mapAttribution, setMapAttribution] = useState(DEFAULT_MAP_ATTRIBUTION);
 
   // Vendor coords (fallback to Bangalore Majestic if unset)
   const vendorLat = assignment.vendor_lat && assignment.vendor_lat !== 0 ? assignment.vendor_lat : 12.9778;
@@ -83,47 +86,49 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Get configuration or use standard OSM tiles
-    const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let isSubscribed = true;
 
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          'osm-tiles': {
-            type: 'raster',
-            tiles: [tileUrl],
-            tileSize: 256,
-            attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, MapLibre',
-          },
-        },
-        layers: [
-          {
-            id: 'osm-tiles-layer',
-            type: 'raster',
-            source: 'osm-tiles',
-            minzoom: 0,
-            maxzoom: 19,
-          },
-        ],
-      },
-      center: [vendorLng, vendorLat],
-      zoom: 13,
-    });
+    // Fetch the dynamic map style config, falling back to the keyless default.
+    ApiClient.getMapConfig()
+      .then(cfg => {
+        if (!isSubscribed || !mapContainerRef.current) return;
+        const styleUrl = cfg?.style_url || DEFAULT_MAP_STYLE_URL;
+        const attribution = cfg?.attribution || DEFAULT_MAP_ATTRIBUTION;
+        setMapAttribution(attribution);
+        initMap(styleUrl);
+      })
+      .catch(() => {
+        if (!isSubscribed || !mapContainerRef.current) return;
+        setMapAttribution(DEFAULT_MAP_ATTRIBUTION);
+        initMap(DEFAULT_MAP_STYLE_URL);
+      });
 
-    mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    const initMap = (styleUrl: string) => {
+      if (!mapContainerRef.current) return;
 
-    map.on('load', () => {
-      renderMapFeatures(map);
-    });
+      const map = new maplibregl.Map({
+        container: mapContainerRef.current,
+        style: styleUrl,
+        center: [vendorLng, vendorLat],
+        zoom: 13,
+      });
+
+      mapRef.current = map;
+      map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+      map.on('load', () => {
+        renderMapFeatures(map);
+      });
+    };
 
     return () => {
+      isSubscribed = false;
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
-      map.remove();
-      mapRef.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
   }, []);
 
@@ -404,7 +409,7 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
             pointerEvents: 'none',
             zIndex: 10,
           }}>
-            © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>OpenStreetMap</a> contributors • MapLibre GL • OSRM
+            {mapAttribution}
           </div>
         </div>
 

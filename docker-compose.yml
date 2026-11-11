@@ -33,6 +33,9 @@ services:
       JWT_ACCESS_TOKEN_TTL: "15m"
       JWT_REFRESH_TOKEN_TTL: "720h"
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173","http://localhost:8080"]'
+      MAP_PROVIDER: "openfreemap"
+      MAP_STYLE_URL: "https://tiles.openfreemap.org/styles/liberty"
+      MAP_ATTRIBUTION: "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
     ports:
       - "8080:8080"
     depends_on:

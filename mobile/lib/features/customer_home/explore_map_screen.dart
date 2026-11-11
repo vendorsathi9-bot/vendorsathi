@@ -173,6 +173,7 @@ class _ExploreMapScreenState extends State<ExploreMapScreen> {
               child: OsmMapView(
                 key: _mapKey,
                 height: double.infinity,
+                apiClient: widget.apiClient,
                 initialLat: widget.initialLat,
                 initialLng: widget.initialLng,
                 customerLat: widget.initialLat,

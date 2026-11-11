@@ -32,8 +32,17 @@ FCM:
   PROJECT_ID: ""
 
 MAP:
-  PROVIDER: "maplibre"
-  TILE_URL: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  # MapLibre style URL (vector tiles). OpenFreeMap is free, keyless and allows
+  # commercial app usage. Do not point this at the public OSM tile servers.
+  PROVIDER: "openfreemap"
+  STYLE_URL: "https://tiles.openfreemap.org/styles/liberty"
+  # Optional raster XYZ tile endpoint for the legacy /mobility/tiles proxy.
+  # Leave blank unless you explicitly configure a raster provider.
+  TILE_URL: ""
+  UPSTREAM_TILE_URL: ""
+  USER_AGENT: "VendorSaathi/1.0 (+https://vendorsaathi.in; contact: admin@vendorsaathi.in)"
+  API_KEY: ""
+  ATTRIBUTION: "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
   ROUTING_PROVIDER: "osrm"
   OSRM_BASE_URL: "https://router.project-osrm.org"
   GEOCODING_PROVIDER: "nominatim"

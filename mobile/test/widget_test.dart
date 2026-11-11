@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vendorsaathi_mobile/core/localization/locale_provider.dart';
+import 'package:vendorsaathi_mobile/core/map/map_style_config.dart';
 import 'package:vendorsaathi_mobile/main.dart';
 import 'package:vendorsaathi_mobile/shared/models/models.dart';
 import 'package:vendorsaathi_mobile/shared/widgets/osm_map_view.dart';
@@ -150,7 +151,7 @@ void main() {
     await tester.pump();
 
     // Verify OpenStreetMap attribution is visible
-    expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
+    expect(find.textContaining('OpenStreetMap contributors'), findsOneWidget);
     expect(find.text('OSM Directions'), findsOneWidget);
     expect(find.text('Vendor'), findsOneWidget);
     expect(find.text('Customer'), findsOneWidget);
@@ -210,5 +211,31 @@ void main() {
     expect(find.text('ಸೈನ್ ಇನ್'), findsWidgets);
     expect(find.text('ದೂರವಾಣಿ ಸಂಖ್ಯೆ'), findsOneWidget);
     expect(find.text('ಪಾಸ್‌ವರ್ಡ್'), findsOneWidget);
+  });
+
+  test('MapStyleConfig generates raster style JSON when tile_url is configured', () {
+    final cfg = MapStyleConfig.fromApi({
+      'provider': 'carto',
+      'tile_url': 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+      'attribution': '© OpenStreetMap contributors, © CARTO',
+    });
+
+    expect(cfg.provider, 'carto');
+    expect(cfg.tileUrl, contains('cartocdn.com'));
+    expect(cfg.effectiveStyleString, contains('"type":"raster"'));
+    expect(cfg.effectiveStyleString, contains('cartocdn.com'));
+    expect(cfg.effectiveStyleString, contains('© OpenStreetMap contributors, © CARTO'));
+  });
+
+  test('MapStyleConfig uses vector style URL when style_url is configured', () {
+    final cfg = MapStyleConfig.fromApi({
+      'provider': 'openfreemap',
+      'style_url': 'https://tiles.openfreemap.org/styles/liberty',
+      'attribution': '© OpenFreeMap',
+    });
+
+    expect(cfg.provider, 'openfreemap');
+    expect(cfg.effectiveStyleString, 'https://tiles.openfreemap.org/styles/liberty');
+    expect(cfg.isValid, true);
   });
 }

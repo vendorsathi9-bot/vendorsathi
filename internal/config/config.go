@@ -49,9 +49,25 @@ type FCMConfig struct {
 	ProjectID       string `mapstructure:"PROJECT_ID"`
 }
 
+// Default map style used by the mobile and admin MapLibre clients.
+//
+// OpenFreeMap is used because it explicitly allows commercial use, does not
+// require an API key, and is intended for website and app traffic. This keeps
+// the app off the public OpenStreetMap tile servers, whose policy forbids
+// mobile-application usage.
+const (
+	DefaultMapStyleURL    = "https://tiles.openfreemap.org/styles/liberty"
+	DefaultMapAttribution = "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
+)
+
 type MapConfig struct {
 	Provider          string `mapstructure:"PROVIDER"`
+	StyleURL          string `mapstructure:"STYLE_URL"`
 	TileURL           string `mapstructure:"TILE_URL"`
+	UpstreamTileURL   string `mapstructure:"UPSTREAM_TILE_URL"`
+	UserAgent         string `mapstructure:"USER_AGENT"`
+	APIKey            string `mapstructure:"API_KEY"`
+	Attribution       string `mapstructure:"ATTRIBUTION"`
 	RoutingProvider   string `mapstructure:"ROUTING_PROVIDER"`
 	OSRMBaseURL       string `mapstructure:"OSRM_BASE_URL"`
 	GeocodingProvider string `mapstructure:"GEOCODING_PROVIDER"`
@@ -112,7 +128,12 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("JWT.REFRESH_TOKEN_TTL", "JWT_REFRESH_TOKEN_TTL")
 	_ = v.BindEnv("MIGRATION.PATH", "MIGRATION_PATH")
 	_ = v.BindEnv("MAP.PROVIDER", "MAP_PROVIDER")
+	_ = v.BindEnv("MAP.STYLE_URL", "MAP_STYLE_URL")
 	_ = v.BindEnv("MAP.TILE_URL", "MAP_TILE_URL")
+	_ = v.BindEnv("MAP.UPSTREAM_TILE_URL", "MAP_UPSTREAM_TILE_URL")
+	_ = v.BindEnv("MAP.USER_AGENT", "MAP_USER_AGENT")
+	_ = v.BindEnv("MAP.API_KEY", "MAP_API_KEY")
+	_ = v.BindEnv("MAP.ATTRIBUTION", "MAP_ATTRIBUTION")
 	_ = v.BindEnv("MAP.ROUTING_PROVIDER", "ROUTING_PROVIDER")
 	_ = v.BindEnv("MAP.OSRM_BASE_URL", "OSRM_BASE_URL")
 	_ = v.BindEnv("MAP.GEOCODING_PROVIDER", "GEOCODING_PROVIDER")
@@ -182,8 +203,15 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("STORAGE.USE_SSL", true)
 
-	v.SetDefault("MAP.PROVIDER", "maplibre")
-	v.SetDefault("MAP.TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+	v.SetDefault("MAP.PROVIDER", "openfreemap")
+	v.SetDefault("MAP.STYLE_URL", DefaultMapStyleURL)
+	// Raster tile URL is kept for the legacy /mobility/tiles proxy and any
+	// raster-only clients. MapLibre clients use STYLE_URL instead.
+	v.SetDefault("MAP.TILE_URL", "")
+	v.SetDefault("MAP.UPSTREAM_TILE_URL", "")
+	v.SetDefault("MAP.USER_AGENT", "VendorSaathi/1.0 (+https://vendorsaathi.in; contact: admin@vendorsaathi.in)")
+	v.SetDefault("MAP.API_KEY", "")
+	v.SetDefault("MAP.ATTRIBUTION", DefaultMapAttribution)
 	v.SetDefault("MAP.ROUTING_PROVIDER", "osrm")
 	v.SetDefault("MAP.OSRM_BASE_URL", "https://router.project-osrm.org")
 	v.SetDefault("MAP.GEOCODING_PROVIDER", "nominatim")

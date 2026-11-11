@@ -38,3 +38,8 @@ mobile/android/app/release/
 *.swo
 *~
 *.log
+
+# Local environment overrides (never commit real values)
+.env
+.env.local
+.env.*.local

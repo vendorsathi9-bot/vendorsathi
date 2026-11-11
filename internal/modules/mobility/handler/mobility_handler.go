@@ -2,6 +2,8 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"vendorsaathi/internal/config"
@@ -55,15 +57,73 @@ func (h *MobilityHandler) GetRoute(c *gin.Context) {
 
 // GetMapConfig GET /mobility/config
 func (h *MobilityHandler) GetMapConfig(c *gin.Context) {
+	attribution := h.mapCfg.Attribution
+	if attribution == "" {
+		attribution = config.DefaultMapAttribution
+	}
+	styleURL := h.mapCfg.StyleURL
+	if styleURL == "" {
+		styleURL = config.DefaultMapStyleURL
+	}
 	httpx.RespondOK(c, gin.H{
 		"provider":           h.mapCfg.Provider,
+		"style_url":          styleURL,
 		"tile_url":           h.mapCfg.TileURL,
+		"attribution":        attribution,
 		"routing_provider":   h.mapCfg.RoutingProvider,
 		"osrm_base_url":      h.mapCfg.OSRMBaseURL,
 		"geocoding_provider": h.mapCfg.GeocodingProvider,
 		"geocoding_base_url": h.mapCfg.GeocodingBaseURL,
-		"attribution":        "© OpenStreetMap contributors, MapLibre, OSRM",
 	})
+}
+
+// ProxyTile GET /mobility/tiles/:z/:x/:y
+func (h *MobilityHandler) ProxyTile(c *gin.Context) {
+	zStr := c.Param("z")
+	xStr := c.Param("x")
+	yStr := strings.TrimSuffix(c.Param("y"), ".png")
+
+	z, err := strconv.Atoi(zStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid zoom coordinate"})
+		return
+	}
+	x, err := strconv.Atoi(xStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid x coordinate"})
+		return
+	}
+	y, err := strconv.Atoi(yStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid y coordinate"})
+		return
+	}
+
+	ifNoneMatch := c.GetHeader("If-None-Match")
+
+	data, contentType, etag, notModified, err := h.service.GetTile(c.Request.Context(), z, x, y, ifNoneMatch)
+	if err != nil {
+		if strings.Contains(err.Error(), "403") {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		if strings.Contains(err.Error(), "429") {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
+	if notModified {
+		c.Status(http.StatusNotModified)
+		return
+	}
+
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800")
+	c.Header("ETag", etag)
+	c.Data(http.StatusOK, contentType, data)
 }
 
 // Geocode GET /mobility/geocode

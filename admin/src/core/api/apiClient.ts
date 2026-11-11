@@ -143,6 +143,7 @@ export interface RouteData {
 
 export interface MapConfigData {
   provider: string;
+  style_url: string;
   tile_url: string;
   routing_provider: string;
   osrm_base_url: string;
@@ -150,6 +151,10 @@ export interface MapConfigData {
   geocoding_base_url: string;
   attribution: string;
 }
+
+// Keyless, MapLibre-compatible fallback. Kept in one place so no component
+// hardcodes a tile provider URL.
+export const DEFAULT_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
 const BASE_URL = '/api/v1';
 
@@ -315,7 +320,6 @@ export class ApiClient {
   }
 
   static async getMapConfig(): Promise<MapConfigData> {
-    const res = await this.request<{ data: MapConfigData }>('/mobility/config');
-    return res.data;
+    return this.request<MapConfigData>('/mobility/config');
   }
 }

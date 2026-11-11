@@ -255,6 +255,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 	router.GET("/api/v1/mobility/nearby-vendors", h.mobility.FindNearbyVendors)
 	router.GET("/api/v1/mobility/route", h.mobility.GetRoute)
 	router.GET("/api/v1/mobility/config", h.mobility.GetMapConfig)
+	router.GET("/api/v1/mobility/tiles/:z/:x/:y", h.mobility.ProxyTile)
 	router.GET("/api/v1/mobility/geocode", h.mobility.Geocode)
 	router.GET("/api/v1/mobility/reverse-geocode", h.mobility.ReverseGeocode)
 

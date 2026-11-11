@@ -139,6 +139,7 @@ class _DeliveryRouteScreenState extends State<DeliveryRouteScreen> {
             child: OsmMapView(
               key: _mapKey,
               height: double.infinity,
+              apiClient: widget.apiClient,
               initialLat: _agentLat ?? (assignment.vendorLat != 0 ? assignment.vendorLat : 12.9767),
               initialLng: _agentLng ?? (assignment.vendorLng != 0 ? assignment.vendorLng : 77.5713),
               initialZoom: 13.5,

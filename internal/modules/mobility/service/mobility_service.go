@@ -17,6 +17,13 @@ import (
 	"vendorsaathi/internal/modules/mobility/repository"
 )
 
+type cachedTile struct {
+	data        []byte
+	contentType string
+	etag        string
+	cachedAt    time.Time
+}
+
 type MobilityService struct {
 	repo          *repository.MobilityRepository
 	mapCfg        config.MapConfig
@@ -24,6 +31,8 @@ type MobilityService struct {
 	geocodeCache  sync.Map
 	nominatimMu   sync.Mutex
 	lastNominatim time.Time
+	tileCacheMu   sync.RWMutex
+	tileCache     map[string]cachedTile
 }
 
 func NewMobilityService(repo *repository.MobilityRepository, mapCfg config.MapConfig) *MobilityService {
@@ -33,6 +42,7 @@ func NewMobilityService(repo *repository.MobilityRepository, mapCfg config.MapCo
 		httpClient: &http.Client{
 			Timeout: 6 * time.Second,
 		},
+		tileCache: make(map[string]cachedTile),
 	}
 }
 
@@ -380,4 +390,118 @@ func (s *MobilityService) ReverseGeocode(ctx context.Context, lat, lng float64) 
 
 	s.geocodeCache.Store(cacheKey, res)
 	return res, nil
+}
+
+// GetTile proxies and caches a map tile with proper User-Agent identification and caching headers.
+// Respects OpenStreetMap tile usage policy by using identifying User-Agent, in-memory caching,
+// and handling 304 Not Modified.
+func (s *MobilityService) GetTile(ctx context.Context, z, x, y int, ifNoneMatch string) ([]byte, string, string, bool, error) {
+	if z < 0 || z > 20 || x < 0 || y < 0 {
+		return nil, "", "", false, fmt.Errorf("tile coordinates out of range")
+	}
+	maxCoord := 1 << z
+	if x >= maxCoord || y >= maxCoord {
+		return nil, "", "", false, fmt.Errorf("tile coordinates out of bounds for zoom level %d", z)
+	}
+
+	cacheKey := fmt.Sprintf("%d/%d/%d", z, x, y)
+
+	// Check in-memory cache
+	s.tileCacheMu.RLock()
+	cached, found := s.tileCache[cacheKey]
+	s.tileCacheMu.RUnlock()
+
+	if found && time.Since(cached.cachedAt) < 24*time.Hour {
+		if ifNoneMatch != "" && ifNoneMatch == cached.etag {
+			return nil, "", cached.etag, true, nil
+		}
+		return cached.data, cached.contentType, cached.etag, false, nil
+	}
+
+	// Determine upstream URL. Raster proxy usage is optional; MapLibre clients
+	// use the vector style URL from /mobility/config instead.
+	template := s.mapCfg.UpstreamTileURL
+	if template == "" {
+		template = s.mapCfg.TileURL
+	}
+	if template == "" {
+		return nil, "", "", false, fmt.Errorf("no raster tile provider configured: set MAP_UPSTREAM_TILE_URL or MAP_TILE_URL")
+	}
+
+	tileURL := strings.Replace(template, "{z}", strconv.Itoa(z), 1)
+	tileURL = strings.Replace(tileURL, "{x}", strconv.Itoa(x), 1)
+	tileURL = strings.Replace(tileURL, "{y}", strconv.Itoa(y), 1)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tileURL, nil)
+	if err != nil {
+		return nil, "", "", false, fmt.Errorf("failed to create tile request: %w", err)
+	}
+
+	userAgent := s.mapCfg.UserAgent
+	if userAgent == "" {
+		userAgent = "VendorSaathi/1.0 (+https://vendorsaathi.in; contact: admin@vendorsaathi.in)"
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "image/png,image/jpeg,image/*")
+	if ifNoneMatch != "" {
+		req.Header.Set("If-None-Match", ifNoneMatch)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, "", "", false, fmt.Errorf("failed to fetch tile: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotModified {
+		return nil, "", ifNoneMatch, true, nil
+	}
+
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, "", "", false, fmt.Errorf("tile provider access denied (HTTP 403): %s", resp.Status)
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, "", "", false, fmt.Errorf("tile provider rate limit exceeded (HTTP 429)")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", "", false, fmt.Errorf("tile provider returned HTTP %d", resp.StatusCode)
+	}
+
+	// Limit tile size to 1MB
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+	if err != nil {
+		return nil, "", "", false, fmt.Errorf("failed to read tile data: %w", err)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/png"
+	}
+	etag := resp.Header.Get("ETag")
+	if etag == "" {
+		etag = fmt.Sprintf(`"%x-%d"`, len(data), time.Now().Unix())
+	}
+
+	// Store in cache with capacity limit (max 2000 tiles)
+	s.tileCacheMu.Lock()
+	if len(s.tileCache) > 2000 {
+		now := time.Now()
+		for k, v := range s.tileCache {
+			if now.Sub(v.cachedAt) > 12*time.Hour {
+				delete(s.tileCache, k)
+			}
+		}
+		if len(s.tileCache) > 2000 {
+			s.tileCache = make(map[string]cachedTile)
+		}
+	}
+	s.tileCache[cacheKey] = cachedTile{
+		data:        data,
+		contentType: contentType,
+		etag:        etag,
+		cachedAt:    time.Now(),
+	}
+	s.tileCacheMu.Unlock()
+
+	return data, contentType, etag, false, nil
 }

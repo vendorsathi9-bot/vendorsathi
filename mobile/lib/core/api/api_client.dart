@@ -99,4 +99,31 @@ class ApiClient {
 
     throw ApiException(code: code, message: message, statusCode: res.statusCode);
   }
+
+  static Map<String, dynamic>? _cachedMapConfig;
+
+  /// Fetches the dynamic map tile configuration from the backend mobility service.
+  /// Resolves relative tile URLs to the absolute API server address.
+  Future<Map<String, dynamic>?> getMapConfig({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedMapConfig != null) {
+      return _cachedMapConfig;
+    }
+    try {
+      final res = await get('/mobility/config');
+      if (res is Map<String, dynamic>) {
+        final config = Map<String, dynamic>.from(res);
+        final rawTileUrl = config['tile_url'] as String?;
+        if (rawTileUrl != null && rawTileUrl.startsWith('/')) {
+          final uri = Uri.parse(baseUrl);
+          final origin = '${uri.scheme}://${uri.host}:${uri.port}';
+          config['tile_url'] = '$origin$rawTileUrl';
+        }
+        _cachedMapConfig = config;
+        return config;
+      }
+    } catch (_) {
+      // Return cached config or fallback if network unavailable
+    }
+    return _cachedMapConfig;
+  }
 }

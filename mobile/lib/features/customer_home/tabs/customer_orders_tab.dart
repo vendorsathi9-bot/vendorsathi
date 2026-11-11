@@ -642,6 +642,7 @@ class _OrderTrackingViewState extends State<_OrderTrackingView> {
               child: SizedBox(
                 height: 240,
                 child: OsmMapView(
+                  apiClient: widget.apiClient,
                   agentLat: _agentLat!,
                   agentLng: _agentLng!,
                   agentTitle: 'Delivery Agent',

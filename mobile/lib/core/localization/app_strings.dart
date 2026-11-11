@@ -269,6 +269,8 @@ class AppStrings {
     'sufficient_stock': 'ಸಾಕಷ್ಟು ದಾಸ್ತಾನು ಇದೆ',
     'generating_forecast': 'ಬೇಡಿಕೆ ಮುನ್ಸೂಚನೆ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...',
     'map_load_error': 'ನಕ್ಷೆಯ ಟೈಲ್ಸ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ',
+    'map_loading': 'ನಕ್ಷೆಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...',
+    'map_unavailable_body': 'ನಕ್ಷೆ ತಾತ್ಕಾಲಿಕವಾಗಿ ಲಭ್ಯವಿಲ್ಲ. ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     'check_connection': 'ದಯವಿಟ್ಟು ನೆಟ್‌ವರ್ಕ್ ಸಂಪರ್ಕ ಅಥವಾ ವೆಬ್‌ಜಿಎಲ್ ಪರಿಶೀಲಿಸಿ',
     'open_in_osm': 'ಓಪನ್‌ಸ್ಟ್ರೀಟ್‌ಮ್ಯಾಪ್‌ನಲ್ಲಿ ತೆರೆಯಿರಿ',
 
@@ -588,6 +590,8 @@ class AppStrings {
     'sufficient_stock': 'Sufficient',
     'generating_forecast': 'Generating demand predictions...',
     'map_load_error': 'Unable to load map tiles',
+    'map_loading': 'Loading map...',
+    'map_unavailable_body': 'The map is temporarily unavailable. Check your connection and try again.',
     'check_connection': 'Please check network connectivity or WebGL support',
     'open_in_osm': 'Open in OpenStreetMap',
 
