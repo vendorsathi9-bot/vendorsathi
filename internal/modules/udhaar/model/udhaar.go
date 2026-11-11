@@ -26,6 +26,8 @@ type UdhaarAccount struct {
 	ID               uuid.UUID           `db:"id"`
 	VendorID         uuid.UUID           `db:"vendor_id"`
 	CustomerID       uuid.UUID           `db:"customer_id"`
+	CustomerName     *string             `db:"customer_name"`
+	CustomerPhone    *string             `db:"customer_phone"`
 	Status           UdhaarAccountStatus `db:"status"`
 	CreditLimitPaise *int64              `db:"credit_limit_paise"`
 	CreatedAt        time.Time           `db:"created_at"`
@@ -70,6 +72,8 @@ type UdhaarAccountOutput struct {
 	ID               uuid.UUID           `json:"id"`
 	VendorID         uuid.UUID           `json:"vendor_id"`
 	CustomerID       uuid.UUID           `json:"customer_id"`
+	CustomerName     *string             `json:"customer_name,omitempty"`
+	CustomerPhone    *string             `json:"customer_phone,omitempty"`
 	Status           UdhaarAccountStatus `json:"status"`
 	CreditLimitPaise *int64              `json:"credit_limit_paise,omitempty"`
 	BalancePaise     int64               `json:"balance_paise"`
@@ -95,6 +99,8 @@ func (a *UdhaarAccount) ToOutput(balancePaise int64) UdhaarAccountOutput {
 		ID:               a.ID,
 		VendorID:         a.VendorID,
 		CustomerID:       a.CustomerID,
+		CustomerName:     a.CustomerName,
+		CustomerPhone:    a.CustomerPhone,
 		Status:           a.Status,
 		CreditLimitPaise: a.CreditLimitPaise,
 		BalancePaise:     balancePaise,

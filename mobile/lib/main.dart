@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 import 'app/theme.dart';
 import 'core/api/api_client.dart';
 import 'core/localization/locale_provider.dart';
@@ -7,6 +9,7 @@ import 'features/auth/register_screen.dart';
 import 'features/customer_home/customer_home_screen.dart';
 import 'features/delivery_agent/delivery_agent_home_screen.dart';
 import 'features/language/language_selection_screen.dart';
+import 'features/splash/splash_screen.dart';
 import 'features/vendor_home/vendor_home_screen.dart';
 import 'shared/models/models.dart';
 
@@ -14,14 +17,18 @@ enum AppExperience { vendor, customer, deliveryAgent }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    MapLibreMap.webLibrarySource = const MapLibreJsSource.preloaded();
+  }
   final savedLang = await LanguageController.getSavedLanguage();
   runApp(VendorSaathiApp(initialLanguage: savedLang));
 }
 
 class VendorSaathiApp extends StatefulWidget {
   final String? initialLanguage;
+  final bool skipSplash;
 
-  const VendorSaathiApp({super.key, this.initialLanguage});
+  const VendorSaathiApp({super.key, this.initialLanguage, this.skipSplash = false});
 
   @override
   State<VendorSaathiApp> createState() => _VendorSaathiAppState();
@@ -30,6 +37,7 @@ class VendorSaathiApp extends StatefulWidget {
 class _VendorSaathiAppState extends State<VendorSaathiApp> {
   final ApiClient _apiClient = ApiClient();
   late String _currentLanguage;
+  late bool _showSplash;
   bool _hasChosenLanguage = false;
   bool _showRegister = false;
   UserModel? _currentUser;
@@ -38,6 +46,7 @@ class _VendorSaathiAppState extends State<VendorSaathiApp> {
   @override
   void initState() {
     super.initState();
+    _showSplash = !widget.skipSplash;
     if (widget.initialLanguage != null && widget.initialLanguage!.isNotEmpty) {
       _currentLanguage = widget.initialLanguage!;
       _hasChosenLanguage = true;
@@ -52,12 +61,14 @@ class _VendorSaathiAppState extends State<VendorSaathiApp> {
       _currentLanguage = langCode;
       _hasChosenLanguage = true;
     });
+    LanguageController.saveLanguage(langCode, apiClient: _apiClient);
   }
 
   void _setLanguage(String langCode) {
     setState(() {
       _currentLanguage = langCode;
     });
+    LanguageController.saveLanguage(langCode, apiClient: _apiClient);
   }
 
   void _onLoginSuccess(UserModel user) {
@@ -116,6 +127,13 @@ class _VendorSaathiAppState extends State<VendorSaathiApp> {
         theme: AppTheme.lightTheme,
         home: Builder(
           builder: (ctx) {
+            // 0. Branded Splash Screen on Launch
+            if (_showSplash) {
+              return SplashScreen(
+                onFinish: () => setState(() => _showSplash = false),
+              );
+            }
+
             // 1. First-launch Language Selection
             if (!_hasChosenLanguage) {
               return LanguageSelectionScreen(

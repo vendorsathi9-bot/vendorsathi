@@ -258,6 +258,20 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 	router.GET("/api/v1/mobility/geocode", h.mobility.Geocode)
 	router.GET("/api/v1/mobility/reverse-geocode", h.mobility.ReverseGeocode)
 
+	// Public read operations (browsing vendors, products, categories)
+	public := router.Group("/api/v1")
+	public.Use(middleware.OptionalAuthMiddleware(jwtManager))
+	{
+		public.GET("/products", h.products.GetMyProducts)
+		public.GET("/products/:id", h.products.GetProductByID)
+		public.GET("/products/vendor/:vendorId", h.products.GetVendorProducts)
+		public.GET("/categories", h.products.GetCategories)
+		public.GET("/categories/:id", h.products.GetCategoryByID)
+		public.GET("/categories/:id/products", h.products.GetProductsByCategory)
+		public.GET("/vendors/:id", h.vendors.GetProfileByID)
+		public.GET("/vendors/:id/detail", h.vendors.GetVendorDetail)
+	}
+
 	// Auth routes
 	authGroup := router.Group("/api/v1/auth")
 	{
@@ -293,9 +307,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			vendorsGroup.POST("/profile", h.vendors.CreateProfile)
 			vendorsGroup.GET("/profile/me", h.vendors.GetMyProfile)
 			vendorsGroup.PATCH("/profile/me", h.vendors.UpdateMyProfile)
-			vendorsGroup.GET("/:id", h.vendors.GetProfileByID)
 			vendorsGroup.PATCH("/:id/status", h.vendors.UpdateProfileStatus)
-			vendorsGroup.GET("/:id/detail", h.vendors.GetVendorDetail)
 
 			vendorsGroup.POST("/locations", h.vendors.CreateLocation)
 			vendorsGroup.GET("/locations/me", h.vendors.GetMyLocations)
@@ -321,26 +333,20 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			customersGroup.DELETE("/addresses/:addressId", h.customers.DeleteAddress)
 		}
 
-		// Products routes
+		// Products routes (management operations)
 		productsGroup := protected.Group("/products")
 		{
 			productsGroup.POST("", h.products.CreateProduct)
-			productsGroup.GET("", h.products.GetMyProducts)
 			productsGroup.GET("/active", h.products.GetMyActiveProducts)
-			productsGroup.GET("/vendor/:vendorId", h.products.GetVendorProducts)
-			productsGroup.GET("/:id", h.products.GetProductByID)
 			productsGroup.PATCH("/:id", h.products.UpdateProduct)
 			productsGroup.DELETE("/:id", h.products.ArchiveProduct)
 		}
 
-		// Categories routes
+		// Categories routes (management operations)
 		categoriesGroup := protected.Group("/categories")
 		{
 			categoriesGroup.POST("", h.products.CreateCategory)
-			categoriesGroup.GET("", h.products.GetCategories)
-			categoriesGroup.GET("/:id", h.products.GetCategoryByID)
 			categoriesGroup.PATCH("/:id", h.products.UpdateCategory)
-			categoriesGroup.GET("/:id/products", h.products.GetProductsByCategory)
 		}
 
 		// Inventory routes
@@ -379,6 +385,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			ordersGroup.POST("/:id/out-for-delivery", h.orders.OutForDelivery)
 			ordersGroup.POST("/:id/complete", h.orders.CompleteOrder)
 			ordersGroup.POST("/:id/request-cancellation", h.orders.RequestCancellation)
+			ordersGroup.POST("/:id/cancel", h.orders.RequestCancellation)
 			ordersGroup.POST("/:id/decide-cancellation", h.orders.DecideCancellation)
 		}
 

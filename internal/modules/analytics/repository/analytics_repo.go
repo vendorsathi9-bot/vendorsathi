@@ -186,17 +186,30 @@ func (r *AnalyticsRepository) GetDetailedVendorAnalytics(ctx context.Context, ve
 		}
 	}
 
-	// 7. Sales trends (last 7 days)
+	// 7. Sales trends (last 7 days) - aggregated separately to prevent double-counting when orders have multiple items
 	trendQuery := `
 		SELECT to_char(d.day, 'YYYY-MM-DD') as date_str,
-		       COUNT(DISTINCT o.id) as order_count,
-		       COALESCE(SUM(o.total_paise), 0) as sales_paise,
-		       COALESCE(SUM((oi.unit_price_paise - COALESCE(p.cost_price_paise, 0)) * oi.quantity), 0) as profit_paise
+		       COALESCE(o_agg.order_count, 0) as order_count,
+		       COALESCE(o_agg.sales_paise, 0) as sales_paise,
+		       COALESCE(p_agg.profit_paise, 0) as profit_paise
 		FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval) d(day)
-		LEFT JOIN orders o ON date_trunc('day', o.created_at) = d.day AND o.vendor_id = $1 AND o.status = 'COMPLETED'
-		LEFT JOIN order_items oi ON o.id = oi.order_id
-		LEFT JOIN products p ON oi.product_id = p.id
-		GROUP BY d.day
+		LEFT JOIN (
+			SELECT date_trunc('day', created_at) as order_day,
+			       COUNT(*) as order_count,
+			       SUM(total_paise) as sales_paise
+			FROM orders
+			WHERE vendor_id = $1 AND status = 'COMPLETED'
+			GROUP BY date_trunc('day', created_at)
+		) o_agg ON o_agg.order_day = d.day
+		LEFT JOIN (
+			SELECT date_trunc('day', o.created_at) as order_day,
+			       COALESCE(SUM((oi.unit_price_paise - COALESCE(p.cost_price_paise, 0)) * oi.quantity), 0) as profit_paise
+			FROM orders o
+			JOIN order_items oi ON o.id = oi.order_id
+			LEFT JOIN products p ON oi.product_id = p.id
+			WHERE o.vendor_id = $1 AND o.status = 'COMPLETED'
+			GROUP BY date_trunc('day', o.created_at)
+		) p_agg ON p_agg.order_day = d.day
 		ORDER BY d.day ASC
 	`
 	trendRows, err := r.pool.Query(ctx, trendQuery, vendorID)

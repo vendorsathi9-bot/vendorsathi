@@ -1,63 +1,80 @@
 import 'package:flutter/material.dart';
+import '../core/design_system/app_colors.dart';
+import '../core/design_system/app_decorations.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF1E40AF); // Trustworthy deep blue
-  static const Color accentColor = Color(0xFF16A34A);  // Growth green (collections/orders)
-  static const Color surfaceColor = Color(0xFFF8FAFC);
-  static const Color cardColor = Colors.white;
+  static const Color primaryColor = AppColors.primary;
+  static const Color accentColor = AppColors.accent;
+  static const Color surfaceColor = AppColors.background;
+  static const Color cardColor = AppColors.surface;
 
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamilyFallback: const ['Noto Sans Kannada', 'sans-serif'],
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
-        primary: primaryColor,
-        secondary: accentColor,
-        surface: surfaceColor,
+        seedColor: AppColors.primary,
+        primary: AppColors.primary,
+        onPrimary: Colors.white,
+        secondary: AppColors.accent,
+        onSecondary: Colors.white,
+        surface: AppColors.surface,
+        onSurface: AppColors.textPrimary,
+        error: AppColors.error,
+        onError: Colors.white,
       ),
-      scaffoldBackgroundColor: surfaceColor,
+      scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: Color(0xFF0F172A),
-        elevation: 0.5,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
         centerTitle: false,
         titleTextStyle: TextStyle(
-          color: Color(0xFF0F172A),
+          color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
       ),
-      cardTheme: CardThemeData(
-        color: cardColor,
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      cardTheme: const CardThemeData(
+        color: AppColors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadii.roundedLg,
+          side: BorderSide(color: AppColors.border, width: 1),
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadii.roundedMd),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
+      inputDecorationTheme: const InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        fillColor: AppColors.surface,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderRadius: AppRadii.roundedMd,
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderRadius: AppRadii.roundedMd,
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: primaryColor, width: 2),
+          borderRadius: AppRadii.roundedMd,
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
         ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.divider,
+        thickness: 1,
+        space: 1,
       ),
     );
   }

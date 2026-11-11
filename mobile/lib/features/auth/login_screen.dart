@@ -1,5 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
+import '../../core/design_system/app_colors.dart';
+import '../../core/design_system/app_decorations.dart';
+import '../../core/design_system/components/app_buttons.dart';
+import '../../core/design_system/components/app_inputs.dart';
 import '../../core/localization/locale_provider.dart';
 import '../../shared/models/models.dart';
 
@@ -23,9 +28,41 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController(text: '+919876500001');
   final _passwordController = TextEditingController(text: 'VendorPassword123!');
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
 
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  String _localizeError(dynamic error, LocaleProvider loc) {
+    final str = error.toString().toLowerCase();
+    if (str.contains('invalid credentials') || str.contains('invalid_credentials')) {
+      return loc.t('invalid_credentials');
+    }
+    if (str.contains('account is not active') || str.contains('not active') || str.contains('account_inactive')) {
+      return loc.t('account_not_active');
+    }
+    if (str.contains('phone and password')) {
+      return loc.t('phone_password_required');
+    }
+    return error.toString().replaceAll('ApiException', '').trim();
+  }
+
   Future<void> _handleLogin() async {
+    if (_isLoading) return;
+    final loc = LocaleProvider.of(context);
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (phone.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = loc.t('phone_password_required'));
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -33,8 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final res = await widget.apiClient.post('/auth/login', body: {
-        'phone': _phoneController.text.trim(),
-        'password': _passwordController.text.trim(),
+        'phone': phone,
+        'password': password,
       });
 
       final token = res['access_token'] as String;
@@ -42,16 +79,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final user = UserModel.fromJson(res['user']);
 
-      // If user has a preferred language saved on profile, apply it
       if (user.preferredLanguage.isNotEmpty && mounted) {
         LocaleProvider.of(context).setLanguage(user.preferredLanguage);
       }
 
       widget.onLoginSuccess(user);
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceAll('ApiException', '');
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = _localizeError(e, loc);
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -65,7 +103,36 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _phoneController.text = phone;
       _passwordController.text = password;
+      _errorMessage = null;
     });
+  }
+
+  Widget _buildLanguagePill(String code, String label, LocaleProvider loc) {
+    final isSelected = loc.currentLanguage == code;
+    return GestureDetector(
+      onTap: () {
+        if (!isSelected) {
+          loc.setLanguage(code);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: AppRadii.roundedPill,
+          boxShadow: isSelected ? AppShadows.card : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -73,135 +140,198 @@ class _LoginScreenState extends State<LoginScreen> {
     final loc = LocaleProvider.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          TextButton.icon(
-            onPressed: () {
-              final newLang = loc.currentLanguage == 'en' ? 'kn' : 'en';
-              loc.setLanguage(newLang);
-              LanguageController.saveLanguage(newLang, apiClient: widget.apiClient);
-            },
-            icon: const Icon(Icons.language, size: 18),
-            label: Text(loc.currentLanguage == 'en' ? 'ಕನ್ನಡ' : 'English'),
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: AppColors.mintSoft,
+              borderRadius: AppRadii.roundedPill,
+              border: Border.all(color: AppColors.mint, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildLanguagePill('en', 'English', loc),
+                _buildLanguagePill('kn', 'ಕನ್ನಡ', loc),
+              ],
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.storefront_rounded, size: 72, color: Color(0xFF1E40AF)),
-                const SizedBox(height: 16),
+                // Brand Avatar with forest green accent
+                Center(
+                  child: Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      color: AppColors.mintSoft,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.mint, width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.storefront_rounded,
+                      size: 40,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Text(
                   loc.t('app_name'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.4,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   loc.t('tagline'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 28),
+
+                // Error alert banner if any
                 if (_errorMessage != null)
                   Container(
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFFECACA), width: 1),
+                      color: AppColors.errorBg,
+                      borderRadius: AppRadii.roundedMd,
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3), width: 1),
                     ),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: AppColors.errorText, fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                TextField(
+
+                // Phone Input Field
+                AppTextField(
+                  label: loc.t('phone'),
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: loc.t('phone'),
-                    prefixIcon: const Icon(Icons.phone_outlined),
-                    border: const OutlineInputBorder(),
-                  ),
+                  prefixIcon: Icons.phone_outlined,
+                  hint: '+919876500001',
                 ),
                 const SizedBox(height: 16),
-                TextField(
+
+                // Password Input Field
+                AppTextField(
+                  label: loc.t('password'),
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: loc.t('password'),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    border: const OutlineInputBorder(),
+                  obscureText: _obscurePassword,
+                  prefixIcon: Icons.lock_outline_rounded,
+                  hint: '••••••••••••',
+                  suffix: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: AppColors.textTertiary,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
+
+                // Sign In Button
+                AppPrimaryButton(
+                  label: loc.t('sign_in'),
+                  icon: Icons.login_rounded,
+                  isLoading: _isLoading,
                   onPressed: _isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E40AF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(
-                          loc.t('sign_in'),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
                 ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: widget.onNavigateToRegister,
-                  child: Text(loc.t('dont_have_account')),
+                const SizedBox(height: 14),
+
+                // Register Navigation Link
+                Center(
+                  child: TextButton(
+                    onPressed: widget.onNavigateToRegister,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    child: Text(loc.t('dont_have_account')),
+                  ),
                 ),
                 const SizedBox(height: 20),
-                const Divider(),
-                const SizedBox(height: 12),
-                Text(
-                  loc.currentLanguage == 'kn' ? 'ಪರೀಕ್ಷಾ ಖಾತೆಗಳು (Quick Fill):' : 'Demo Test Accounts:',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _fillCredentials('+919876500001', 'VendorPassword123!'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                        child: const Text('Vendor Suresh', style: TextStyle(fontSize: 11)),
-                      ),
+
+                // Demo Test Account Quick-Login Pills (Development only)
+                if (kDebugMode || const bool.fromEnvironment('ALLOW_DEMO_ACCOUNTS', defaultValue: true)) ...[
+                  const Divider(),
+                  const SizedBox(height: 14),
+                  Text(
+                    loc.t('demo_accounts'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textTertiary,
+                      letterSpacing: 0.5,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _fillCredentials('+919888877777', 'CustomerPassword123!'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AppSecondaryButton(
+                          label: loc.currentLanguage == 'kn' ? 'ವ್ಯಾಪಾರಿ' : 'Vendor',
+                          icon: Icons.store_rounded,
+                          isFullWidth: false,
+                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
+                          onPressed: () => _fillCredentials('+919876500001', 'VendorPassword123!'),
                         ),
-                        child: const Text('Customer Ramesh', style: TextStyle(fontSize: 11)),
-                      ),
+                        const SizedBox(width: 8),
+                        AppSecondaryButton(
+                          label: loc.currentLanguage == 'kn' ? 'ಗ್ರಾಹಕ' : 'Customer',
+                          icon: Icons.shopping_basket_rounded,
+                          isFullWidth: false,
+                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
+                          onPressed: () => _fillCredentials('+919888877777', 'CustomerPassword123!'),
+                        ),
+                        const SizedBox(width: 8),
+                        AppSecondaryButton(
+                          label: loc.currentLanguage == 'kn' ? 'ಡೆಲಿವರಿ ಸಿಬ್ಬಂದಿ' : 'Delivery Agent',
+                          icon: Icons.two_wheeler_rounded,
+                          isFullWidth: false,
+                          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 14),
+                          onPressed: () => _fillCredentials('+919888822222', 'CustomerPassword123!'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),

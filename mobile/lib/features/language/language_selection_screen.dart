@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/design_system/app_colors.dart';
+import '../../core/design_system/app_decorations.dart';
+import '../../core/design_system/components/app_buttons.dart';
 import '../../core/localization/locale_provider.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
@@ -29,145 +32,44 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     widget.onLanguageSelected(_selectedLanguage);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isKn = _selectedLanguage == 'kn';
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E40AF).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.translate_rounded,
-                    size: 48,
-                    color: Color(0xFF1E40AF),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              const Text(
-                'Choose your preferred language',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              // English Option Card
-              _buildOptionCard(
-                title: 'English',
-                subtitle: 'Continue in English',
-                code: 'en',
-                isSelected: _selectedLanguage == 'en',
-              ),
-              const SizedBox(height: 16),
-
-              // Kannada Option Card
-              _buildOptionCard(
-                title: 'ಕನ್ನಡ',
-                subtitle: 'ಕನ್ನಡದಲ್ಲಿ ಮುಂದುವರಿಯಿರಿ',
-                code: 'kn',
-                isSelected: _selectedLanguage == 'kn',
-              ),
-
-              const Spacer(),
-
-              ElevatedButton(
-                onPressed: _handleContinue,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E40AF),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                child: Text(
-                  isKn ? 'ಮುಂದುವರಿಯಿರಿ' : 'Continue',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildOptionCard({
     required String title,
     required String subtitle,
+    required String scriptLetter,
     required String code,
     required bool isSelected,
   }) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedLanguage = code;
-        });
-      },
-      borderRadius: BorderRadius.circular(14),
+    return PressableScale(
+      onPressed: () => setState(() => _selectedLanguage = code),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(18),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          color: isSelected ? AppColors.mintSoft : AppColors.surface,
+          borderRadius: AppRadii.roundedLg,
           border: Border.all(
-            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-            width: isSelected ? 2 : 1,
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 2.0 : 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isSelected ? 0.05 : 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            )
-          ],
+          boxShadow: isSelected ? AppShadows.card : null,
         ),
         child: Row(
           children: [
+            // Letter avatar circle
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
-                shape: BoxShape.circle,
+                color: isSelected ? AppColors.primary : AppColors.surfaceMuted,
+                borderRadius: AppRadii.roundedMd,
               ),
               child: Center(
                 child: Text(
-                  code == 'kn' ? 'ಕ' : 'A',
+                  scriptLetter,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : const Color(0xFF475569),
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -180,28 +82,130 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? const Color(0xFF1E40AF) : const Color(0xFF1E293B),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle,
                     style: TextStyle(
                       fontSize: 13,
-                      color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
+                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
-              size: 26,
+            // Custom Radio Circle
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: 2,
+                ),
+                color: isSelected ? AppColors.primary : Colors.transparent,
+              ),
+              child: isSelected
+                  ? const Center(
+                      child: Icon(Icons.check, size: 14, color: Colors.white),
+                    )
+                  : null,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isKn = _selectedLanguage == 'kn';
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              // Top hero icon
+              Center(
+                child: Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    color: AppColors.mintSoft,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.mint, width: 1.5),
+                  ),
+                  child: const Icon(
+                    Icons.translate_rounded,
+                    size: 42,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Choose your preferred language',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 36),
+
+              // English Option Card
+              _buildOptionCard(
+                title: 'English',
+                subtitle: 'Continue in English',
+                scriptLetter: 'A',
+                code: 'en',
+                isSelected: _selectedLanguage == 'en',
+              ),
+              const SizedBox(height: 14),
+
+              // Kannada Option Card
+              _buildOptionCard(
+                title: 'ಕನ್ನಡ',
+                subtitle: 'ಕನ್ನಡದಲ್ಲಿ ಮುಂದುವರಿಯಿರಿ',
+                scriptLetter: 'ಕ',
+                code: 'kn',
+                isSelected: _selectedLanguage == 'kn',
+              ),
+
+              const Spacer(),
+
+              // Continue button
+              AppPrimaryButton(
+                label: isKn ? 'ಮುಂದುವರಿಯಿರಿ' : 'Continue',
+                icon: Icons.arrow_forward_rounded,
+                onPressed: _handleContinue,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );

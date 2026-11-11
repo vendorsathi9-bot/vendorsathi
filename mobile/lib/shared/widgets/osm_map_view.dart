@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/localization/locale_provider.dart';
 import '../models/models.dart';
 
 /// Embedded Open-Source Map powered by MapLibre GL and OpenStreetMap tiles.
@@ -25,6 +27,7 @@ class OsmMapView extends StatefulWidget {
   final double height;
   final bool interactive;
   final String? tileUrl;
+  final String? selectedVendorId;
 
   const OsmMapView({
     super.key,
@@ -46,28 +49,41 @@ class OsmMapView extends StatefulWidget {
     this.height = 280,
     this.interactive = true,
     this.tileUrl,
+    this.selectedVendorId,
   });
 
   @override
-  State<OsmMapView> createState() => _OsmMapViewState();
+  State<OsmMapView> createState() => OsmMapViewState();
 }
 
-class _OsmMapViewState extends State<OsmMapView> {
+class OsmMapViewState extends State<OsmMapView> with AutomaticKeepAliveClientMixin {
   MapLibreMapController? _mapController;
   bool _renderError = false;
+  bool _styleLoaded = false;
+  final Map<String, NearbyVendorModel> _circleToVendorMap = {};
+
+  @override
+  bool get wantKeepAlive => true;
+
+  Future<void> animateToCoordinates(double lat, double lng, {double zoom = 14.5}) async {
+    if (_mapController != null) {
+      await _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(lat, lng), zoom),
+      );
+    }
+  }
 
   // OpenStreetMap raster tile style spec with configurable tile URL
+  // Uses jsonEncode to ensure no leading whitespace/newlines exist, which allows
+  // maplibre_gl_web's style sanitizer to correctly identify and parse the style object.
   String get _osmRasterStyle {
     final effectiveTileUrl = widget.tileUrl ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-    return '''
-    {
+    return jsonEncode({
       "version": 8,
       "sources": {
         "osm-raster-tiles": {
           "type": "raster",
-          "tiles": [
-            "$effectiveTileUrl"
-          ],
+          "tiles": [effectiveTileUrl],
           "tileSize": 256,
           "attribution": "© OpenStreetMap contributors"
         }
@@ -81,39 +97,77 @@ class _OsmMapViewState extends State<OsmMapView> {
           "maxzoom": 19
         }
       ]
-    }
-    ''';
+    });
   }
 
   double get _centerLat {
     if (widget.agentLat != null && widget.agentLat != 0) return widget.agentLat!;
     if (widget.vendorLat != null && widget.vendorLat != 0) return widget.vendorLat!;
     if (widget.customerLat != null && widget.customerLat != 0) return widget.customerLat!;
-    return widget.initialLat ?? 12.9716; // Bangalore default
+    if (widget.nearbyVendors != null && widget.nearbyVendors!.isNotEmpty) {
+      final valid = widget.nearbyVendors!.where((v) => v.latitude != 0 && v.longitude != 0).toList();
+      if (valid.isNotEmpty) {
+        return valid.map((v) => v.latitude).reduce((a, b) => a + b) / valid.length;
+      }
+    }
+    return widget.initialLat ?? 12.9767; // Bangalore Majestic default
   }
 
   double get _centerLng {
     if (widget.agentLng != null && widget.agentLng != 0) return widget.agentLng!;
     if (widget.vendorLng != null && widget.vendorLng != 0) return widget.vendorLng!;
     if (widget.customerLng != null && widget.customerLng != 0) return widget.customerLng!;
-    return widget.initialLng ?? 77.5946;
+    if (widget.nearbyVendors != null && widget.nearbyVendors!.isNotEmpty) {
+      final valid = widget.nearbyVendors!.where((v) => v.latitude != 0 && v.longitude != 0).toList();
+      if (valid.isNotEmpty) {
+        return valid.map((v) => v.longitude).reduce((a, b) => a + b) / valid.length;
+      }
+    }
+    return widget.initialLng ?? 77.5713;
   }
 
   void _onMapCreated(MapLibreMapController controller) {
     _mapController = controller;
+    _mapController!.onCircleTapped.add((Circle circle) {
+      final v = _circleToVendorMap[circle.id];
+      if (v != null && widget.onVendorSelected != null) {
+        widget.onVendorSelected!(v);
+      }
+    });
   }
 
   Future<void> _onStyleLoaded() async {
     if (!mounted || _mapController == null) return;
+    _styleLoaded = true;
+    await _renderMapFeatures();
+  }
+
+  @override
+  void didUpdateWidget(OsmMapView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_mapController != null && _styleLoaded) {
+      _renderMapFeatures();
+    }
+  }
+
+  Future<void> _renderMapFeatures() async {
+    if (!mounted || _mapController == null) return;
 
     try {
+      await _mapController!.clearCircles();
+      await _mapController!.clearLines();
+      _circleToVendorMap.clear();
+
+      final List<LatLng> boundsCoords = [];
+
       // 1. Draw OSRM route line if route coordinates exist
       if (widget.route != null && widget.route!.coordinates.isNotEmpty) {
         final lineCoords = widget.route!.coordinates
             .map((c) => LatLng(c[1], c[0])) // c[0]=lng, c[1]=lat -> LatLng(lat, lng)
             .toList();
 
-        // Thick casing layer
+        boundsCoords.addAll(lineCoords);
+
         await _mapController!.addLine(LineOptions(
           geometry: lineCoords,
           lineColor: '#1d4ed8',
@@ -122,10 +176,12 @@ class _OsmMapViewState extends State<OsmMapView> {
         ));
       }
 
-      // 2. Add Vendor marker / circle
+      // 2. Add Vendor marker
       if (widget.vendorLat != null && widget.vendorLat != 0 && widget.vendorLng != null && widget.vendorLng != 0) {
+        final p = LatLng(widget.vendorLat!, widget.vendorLng!);
+        boundsCoords.add(p);
         await _mapController!.addCircle(CircleOptions(
-          geometry: LatLng(widget.vendorLat!, widget.vendorLng!),
+          geometry: p,
           circleRadius: 9.0,
           circleColor: '#2563eb',
           circleStrokeWidth: 2.0,
@@ -133,10 +189,12 @@ class _OsmMapViewState extends State<OsmMapView> {
         ));
       }
 
-      // 3. Add Customer marker / circle
+      // 3. Add Customer marker
       if (widget.customerLat != null && widget.customerLat != 0 && widget.customerLng != null && widget.customerLng != 0) {
+        final p = LatLng(widget.customerLat!, widget.customerLng!);
+        boundsCoords.add(p);
         await _mapController!.addCircle(CircleOptions(
-          geometry: LatLng(widget.customerLat!, widget.customerLng!),
+          geometry: p,
           circleRadius: 9.0,
           circleColor: '#dc2626',
           circleStrokeWidth: 2.0,
@@ -144,10 +202,12 @@ class _OsmMapViewState extends State<OsmMapView> {
         ));
       }
 
-      // 4. Add Live Delivery Agent marker / circle
+      // 4. Add Live Delivery Agent marker
       if (widget.agentLat != null && widget.agentLat != 0 && widget.agentLng != null && widget.agentLng != 0) {
+        final p = LatLng(widget.agentLat!, widget.agentLng!);
+        boundsCoords.add(p);
         await _mapController!.addCircle(CircleOptions(
-          geometry: LatLng(widget.agentLat!, widget.agentLng!),
+          geometry: p,
           circleRadius: 10.0,
           circleColor: '#16a34a',
           circleStrokeWidth: 3.0,
@@ -159,18 +219,64 @@ class _OsmMapViewState extends State<OsmMapView> {
       if (widget.nearbyVendors != null && widget.nearbyVendors!.isNotEmpty) {
         for (final v in widget.nearbyVendors!) {
           if (v.latitude != 0 && v.longitude != 0) {
-            await _mapController!.addCircle(CircleOptions(
-              geometry: LatLng(v.latitude, v.longitude),
-              circleRadius: 8.0,
-              circleColor: '#0284c7',
-              circleStrokeWidth: 2.0,
-              circleStrokeColor: '#ffffff',
+            final p = LatLng(v.latitude, v.longitude);
+            boundsCoords.add(p);
+            final isSelected = widget.selectedVendorId != null &&
+                v.vendorId == widget.selectedVendorId;
+            final circle = await _mapController!.addCircle(CircleOptions(
+              geometry: p,
+              circleRadius: isSelected ? 12.0 : (v.isOpen ? 8.5 : 7.0),
+              circleColor: isSelected
+                  ? '#16a34a'
+                  : (v.isOpen ? '#0284c7' : '#64748b'),
+              circleStrokeWidth: isSelected ? 3.5 : 2.0,
+              circleStrokeColor: isSelected ? '#f59e0b' : '#ffffff',
             ));
+            _circleToVendorMap[circle.id] = v;
           }
         }
       }
+
+      // Fit map bounds to show available vendors and positions
+      if (boundsCoords.length >= 2) {
+        double minLat = boundsCoords.first.latitude;
+        double maxLat = boundsCoords.first.latitude;
+        double minLng = boundsCoords.first.longitude;
+        double maxLng = boundsCoords.first.longitude;
+
+        for (final pt in boundsCoords) {
+          if (pt.latitude < minLat) minLat = pt.latitude;
+          if (pt.latitude > maxLat) maxLat = pt.latitude;
+          if (pt.longitude < minLng) minLng = pt.longitude;
+          if (pt.longitude > maxLng) maxLng = pt.longitude;
+        }
+
+        if ((maxLat - minLat).abs() > 0.001 || (maxLng - minLng).abs() > 0.001) {
+          final bounds = LatLngBounds(
+            southwest: LatLng(minLat, minLng),
+            northeast: LatLng(maxLat, maxLng),
+          );
+          await _mapController!.animateCamera(
+            CameraUpdate.newLatLngBounds(
+              bounds,
+              left: 40,
+              top: 40,
+              right: 40,
+              bottom: 40,
+            ),
+          );
+        } else {
+          await _mapController!.animateCamera(
+            CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), widget.initialZoom),
+          );
+        }
+      } else if (boundsCoords.length == 1) {
+        await _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(boundsCoords.first, widget.initialZoom),
+        );
+      }
     } catch (e) {
-      debugPrint('OsmMapView style decoration warning: $e');
+      debugPrint('OsmMapView render error: $e');
     }
   }
 
@@ -199,6 +305,7 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
@@ -224,7 +331,8 @@ class _OsmMapViewState extends State<OsmMapView> {
                     onStyleLoadedCallback: _onStyleLoaded,
                     myLocationEnabled: false,
                     trackCameraPosition: true,
-                    attributionButtonMargins: const math.Point(-100, -100), // Hide default attribution button to use custom label
+                    annotationOrder: const [AnnotationType.circle, AnnotationType.line],
+                    attributionButtonMargins: const math.Point(-100, -100),
                   );
                 } catch (e) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -373,6 +481,11 @@ class _OsmMapViewState extends State<OsmMapView> {
   }
 
   Widget _buildFallbackView() {
+    LocaleProvider? loc;
+    try {
+      loc = LocaleProvider.of(context);
+    } catch (_) {}
+
     return Container(
       width: double.infinity,
       height: double.infinity,
@@ -383,25 +496,44 @@ class _OsmMapViewState extends State<OsmMapView> {
         children: [
           const Icon(Icons.map_outlined, size: 36, color: Color(0xFF64748B)),
           const SizedBox(height: 6),
-          const Text(
-            'OpenStreetMap Location Overview',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+          Text(
+            loc?.t('map_load_error') ?? 'OpenStreetMap Location Overview',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
           ),
           const SizedBox(height: 4),
           Text(
-            'Lat: ${_centerLat.toStringAsFixed(4)}, Lng: ${_centerLng.toStringAsFixed(4)}',
+            loc?.t('check_connection') ?? 'Lat: ${_centerLat.toStringAsFixed(4)}, Lng: ${_centerLng.toStringAsFixed(4)}',
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 10),
-          ElevatedButton.icon(
-            onPressed: _openExternalOSM,
-            icon: const Icon(Icons.navigation, size: 14),
-            label: const Text('Open in OpenStreetMap', style: TextStyle(fontSize: 11)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _renderError = false;
+                  });
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 14),
+                label: Text(loc?.t('refresh') ?? 'Retry', style: const TextStyle(fontSize: 11)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _openExternalOSM,
+                icon: const Icon(Icons.navigation, size: 14),
+                label: Text(loc?.t('open_in_osm') ?? 'Open in OpenStreetMap', style: const TextStyle(fontSize: 11)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+            ],
           ),
         ],
       ),

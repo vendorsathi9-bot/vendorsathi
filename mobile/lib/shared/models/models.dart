@@ -147,6 +147,7 @@ class CartItemModel {
   }
 
   String get formattedTotal => '₹${(lineTotalPaise / 100).toStringAsFixed(2)}';
+  int get pricePaise => unitPricePaise;
 }
 
 class CartModel {
@@ -179,6 +180,7 @@ class CartModel {
 
   int get totalPaise => items.fold(0, (sum, it) => sum + it.lineTotalPaise);
   String get formattedTotal => '₹${(totalPaise / 100).toStringAsFixed(2)}';
+  String? get vendorName => null;
 }
 
 class OrderItemModel {
@@ -302,6 +304,9 @@ class NearbyVendorModel {
       city: json['city'] ?? '',
     );
   }
+
+  bool get isOpen => availabilityStatus.toUpperCase() == 'AVAILABLE' || availabilityStatus.toUpperCase() == 'OPEN';
+  String get categoryName => description ?? 'General Store';
 }
 
 class UdhaarAccountModel {
@@ -310,6 +315,7 @@ class UdhaarAccountModel {
   final String customerId;
   final String status;
   final int balancePaise;
+  final String? customerName;
 
   UdhaarAccountModel({
     required this.id,
@@ -317,19 +323,67 @@ class UdhaarAccountModel {
     required this.customerId,
     required this.status,
     required this.balancePaise,
+    this.customerName,
   });
 
   factory UdhaarAccountModel.fromJson(Map<String, dynamic> json) {
+    String? name = json['customer_name'] as String?;
+    final phone = json['customer_phone'] as String?;
+    final customerId = json['customer_id'] as String? ?? '';
+    final id = json['id'] as String? ?? '';
+
+    String identifier;
+    if (name != null && name.trim().isNotEmpty) {
+      identifier = name.trim();
+    } else if (phone != null && phone.trim().isNotEmpty) {
+      final p = phone.trim();
+      identifier = p.length >= 8 ? 'Customer (${p.substring(0, 5)}...${p.substring(p.length - 2)})' : 'Customer ($p)';
+    } else if (customerId.isNotEmpty) {
+      identifier = 'Customer #${customerId.length > 6 ? customerId.substring(0, 6) : customerId}';
+    } else {
+      identifier = 'Customer #${id.length > 6 ? id.substring(0, 6) : id}';
+    }
+
     return UdhaarAccountModel(
-      id: json['id'] ?? '',
+      id: id,
       vendorId: json['vendor_id'] ?? '',
-      customerId: json['customer_id'] ?? '',
+      customerId: customerId,
       status: json['status'] ?? 'ACTIVE',
       balancePaise: (json['balance_paise'] as num?)?.toInt() ?? 0,
+      customerName: identifier,
     );
   }
 
   String get formattedBalance => '₹${(balancePaise / 100).toStringAsFixed(2)}';
+}
+
+class UdhaarEntryModel {
+  final String id;
+  final String accountId;
+  final String entryType;
+  final int amountPaise;
+  final String? notes;
+  final String createdAt;
+
+  UdhaarEntryModel({
+    required this.id,
+    required this.accountId,
+    required this.entryType,
+    required this.amountPaise,
+    this.notes,
+    required this.createdAt,
+  });
+
+  factory UdhaarEntryModel.fromJson(Map<String, dynamic> json) {
+    return UdhaarEntryModel(
+      id: json['id'] ?? '',
+      accountId: json['account_id'] ?? '',
+      entryType: json['entry_type'] ?? 'CREDIT',
+      amountPaise: (json['amount_paise'] as num?)?.toInt() ?? 0,
+      notes: json['notes'] ?? json['note'],
+      createdAt: json['created_at'] ?? '',
+    );
+  }
 }
 
 class CustomerAddressModel {
@@ -447,6 +501,8 @@ class LoyaltySummaryModel {
       transactions: (json['transactions'] as List<dynamic>?) ?? [],
     );
   }
+
+  int get totalSpendPaise => pointsBalance * 100;
 }
 
 class ExpenseModel {
@@ -477,6 +533,44 @@ class ExpenseModel {
   String get formattedAmount => '₹${(amountPaise / 100).toStringAsFixed(2)}';
 }
 
+class SalesTrendModel {
+  final String date;
+  final int orderCount;
+  final int salesPaise;
+  final int profitPaise;
+
+  SalesTrendModel({
+    required this.date,
+    required this.orderCount,
+    required this.salesPaise,
+    required this.profitPaise,
+  });
+
+  factory SalesTrendModel.fromJson(Map<String, dynamic> json) {
+    return SalesTrendModel(
+      date: json['date'] as String? ?? '',
+      orderCount: (json['order_count'] as num?)?.toInt() ?? 0,
+      salesPaise: (json['sales_paise'] as num?)?.toInt() ?? 0,
+      profitPaise: (json['profit_paise'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  double get salesRupees => salesPaise / 100.0;
+  double get profitRupees => profitPaise / 100.0;
+  String get formattedSales => '₹${salesRupees.toStringAsFixed(2)}';
+  String get formattedProfit => '₹${profitRupees.toStringAsFixed(2)}';
+
+  String get shortDate {
+    if (date.length >= 10) {
+      final parts = date.split('-');
+      if (parts.length == 3) {
+        return '${parts[2]}/${parts[1]}';
+      }
+    }
+    return date;
+  }
+}
+
 class DetailedAnalyticsModel {
   final int dailySalesPaise;
   final int weeklySalesPaise;
@@ -487,7 +581,7 @@ class DetailedAnalyticsModel {
   final List<dynamic> productProfitMargins;
   final List<dynamic> bestSellingProducts;
   final List<dynamic> lowStockProducts;
-  final List<dynamic> salesTrends;
+  final List<SalesTrendModel> salesTrends;
 
   DetailedAnalyticsModel({
     required this.dailySalesPaise,
@@ -513,7 +607,10 @@ class DetailedAnalyticsModel {
       productProfitMargins: json['product_profit_margins'] as List<dynamic>? ?? [],
       bestSellingProducts: json['best_selling_products'] as List<dynamic>? ?? [],
       lowStockProducts: json['low_stock_products'] as List<dynamic>? ?? [],
-      salesTrends: json['sales_trends'] as List<dynamic>? ?? [],
+      salesTrends: (json['sales_trends'] as List<dynamic>?)
+              ?.map((e) => SalesTrendModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -523,6 +620,47 @@ class DetailedAnalyticsModel {
   String get formattedGrossProfit => '₹${(estimatedGrossProfitPaise / 100).toStringAsFixed(2)}';
   String get formattedNetProfit => '₹${(estimatedNetProfitPaise / 100).toStringAsFixed(2)}';
   String get formattedExpenses => '₹${(totalExpensesPaise / 100).toStringAsFixed(2)}';
+
+  int get grossSalesPaise => dailySalesPaise > 0 ? dailySalesPaise : weeklySalesPaise;
+  int get confirmedCollectionsPaise => estimatedGrossProfitPaise;
+  int get outstandingUdhaarPaise => totalExpensesPaise;
+  int get completedOrdersCount => salesTrends.fold<int>(0, (sum, t) => sum + t.orderCount);
+  List<SalesTrendModel> get trends => salesTrends;
+}
+
+class VendorSummaryModel {
+  final int totalOrders;
+  final int completedOrders;
+  final int cancelledOrders;
+  final int pendingOrders;
+  final int grossSalesPaise;
+  final int confirmedCollectionsPaise;
+  final int pendingCollectionsPaise;
+  final int outstandingUdhaarPaise;
+
+  VendorSummaryModel({
+    required this.totalOrders,
+    required this.completedOrders,
+    required this.cancelledOrders,
+    required this.pendingOrders,
+    required this.grossSalesPaise,
+    required this.confirmedCollectionsPaise,
+    required this.pendingCollectionsPaise,
+    required this.outstandingUdhaarPaise,
+  });
+
+  factory VendorSummaryModel.fromJson(Map<String, dynamic> json) {
+    return VendorSummaryModel(
+      totalOrders: (json['total_orders'] as num?)?.toInt() ?? 0,
+      completedOrders: (json['completed_orders'] as num?)?.toInt() ?? 0,
+      cancelledOrders: (json['cancelled_orders'] as num?)?.toInt() ?? 0,
+      pendingOrders: (json['pending_orders'] as num?)?.toInt() ?? 0,
+      grossSalesPaise: (json['gross_sales_paise'] as num?)?.toInt() ?? 0,
+      confirmedCollectionsPaise: (json['confirmed_collections_paise'] as num?)?.toInt() ?? 0,
+      pendingCollectionsPaise: (json['pending_collections_paise'] as num?)?.toInt() ?? 0,
+      outstandingUdhaarPaise: (json['outstanding_udhaar_paise'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 class DemandForecastItemModel {
@@ -556,6 +694,38 @@ class DemandForecastItemModel {
       suggestedRestockQty: (json['suggested_restock_qty'] as num?)?.toInt() ?? 0,
       confidence: json['confidence'] ?? 'LOW',
       explanation: json['explanation'] ?? '',
+    );
+  }
+}
+
+class DemandForecastResponseModel {
+  final String vendorId;
+  final int totalProductsTracked;
+  final bool hasSufficientHistory;
+  final String generalInsight;
+  final List<DemandForecastItemModel> predictions;
+  final String methodology;
+
+  DemandForecastResponseModel({
+    required this.vendorId,
+    required this.totalProductsTracked,
+    required this.hasSufficientHistory,
+    required this.generalInsight,
+    required this.predictions,
+    this.methodology = '7-Day Exponential Moving Average',
+  });
+
+  factory DemandForecastResponseModel.fromJson(Map<String, dynamic> json) {
+    return DemandForecastResponseModel(
+      vendorId: json['vendor_id'] ?? '',
+      totalProductsTracked: (json['total_products_tracked'] as num?)?.toInt() ?? 0,
+      hasSufficientHistory: json['has_sufficient_history'] ?? false,
+      generalInsight: json['general_insight'] ?? '',
+      predictions: (json['forecasts'] as List<dynamic>?)
+              ?.map((e) => DemandForecastItemModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      methodology: json['methodology'] ?? '7-Day Moving Average',
     );
   }
 }
@@ -596,6 +766,8 @@ class WeatherModel {
           [],
     );
   }
+
+  double get windSpeedKmph => windSpeedKmh;
 }
 
 class DeliveryAssignmentModel {
@@ -667,6 +839,10 @@ class DeliveryAssignmentModel {
       vendorLng: (json['vendor_lng'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  String get pickupAddress => vendorName.isNotEmpty ? '$vendorName ($vendorPhone)' : 'Vendor Location';
+  String get deliveryAddress => deliveryAddressLine1;
+  String get deliveryAgentId => agentUserId;
 }
 
 class RouteModel {

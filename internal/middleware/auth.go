@@ -44,6 +44,30 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 	}
 }
 
+// OptionalAuthMiddleware validates JWT if Authorization header is present, but allows requests without it.
+func OptionalAuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.Next()
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			claims, err := jwtManager.ValidateAccessToken(parts[1])
+			if err == nil {
+				c.Set("user_id", claims.UserID)
+				c.Set("session_id", claims.SessionID)
+				c.Set("roles", claims.Roles)
+				c.Set("permissions", claims.Permissions)
+			}
+		}
+
+		c.Next()
+	}
+}
+
 func RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		rolesVal, exists := c.Get("roles")

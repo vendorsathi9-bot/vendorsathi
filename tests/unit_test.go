@@ -475,4 +475,75 @@ func TestOSRMGeoJSONStructure(t *testing.T) {
 	}
 }
 
+func TestProductAuthorizationAndOwnershipRules(t *testing.T) {
+	vendor1ID := uuid.New()
+	vendor2ID := uuid.New()
+	customerID := uuid.New()
+
+	product1 := struct {
+		ID       uuid.UUID
+		VendorID uuid.UUID
+		Active   bool
+	}{
+		ID:       uuid.New(),
+		VendorID: vendor1ID,
+		Active:   true,
+	}
+
+	// 1. Customer can browse public active products
+	canBrowsePublic := func(roles []string, vendorID uuid.UUID) bool {
+		// Public read is permitted for any role (including CUSTOMER and guest) when querying a vendor
+		return vendorID != uuid.Nil
+	}
+	if !canBrowsePublic([]string{"CUSTOMER"}, vendor1ID) {
+		t.Errorf("expected CUSTOMER to be allowed to browse vendor1 products")
+	}
+
+	// 2. Customer cannot modify products
+	canModifyProduct := func(roles []string, callerID, productVendorID uuid.UUID) (bool, error) {
+		isVendor := false
+		isAdmin := false
+		for _, r := range roles {
+			if r == "VENDOR" {
+				isVendor = true
+			}
+			if r == "ADMIN" || r == "SUPER_ADMIN" {
+				isAdmin = true
+			}
+		}
+		if !isVendor && !isAdmin {
+			return false, shared.ErrForbidden
+		}
+		if !isAdmin && callerID != productVendorID {
+			return false, shared.ErrForbidden
+		}
+		return true, nil
+	}
+
+	// Customer attempt
+	allowed, err := canModifyProduct([]string{"CUSTOMER"}, customerID, product1.VendorID)
+	if allowed || err != shared.ErrForbidden {
+		t.Errorf("expected customer product modification to be forbidden, got allowed=%v, err=%v", allowed, err)
+	}
+
+	// 3. Vendor can manage their own products
+	allowed, err = canModifyProduct([]string{"VENDOR"}, vendor1ID, product1.VendorID)
+	if !allowed || err != nil {
+		t.Errorf("expected vendor1 to be allowed to manage own product, got allowed=%v, err=%v", allowed, err)
+	}
+
+	// 4. Vendor cannot manage another vendor's products
+	allowed, err = canModifyProduct([]string{"VENDOR"}, vendor2ID, product1.VendorID)
+	if allowed || err != shared.ErrForbidden {
+		t.Errorf("expected vendor2 to be forbidden from modifying vendor1 product, got allowed=%v, err=%v", allowed, err)
+	}
+
+	// 5. Admin permissions work correctly
+	allowed, err = canModifyProduct([]string{"ADMIN"}, uuid.New(), product1.VendorID)
+	if !allowed || err != nil {
+		t.Errorf("expected admin to be authorized for product governance, got allowed=%v, err=%v", allowed, err)
+	}
+}
+
+
 

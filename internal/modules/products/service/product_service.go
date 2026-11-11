@@ -164,7 +164,7 @@ func (s *ProductService) UpdateProduct(ctx context.Context, vendorID uuid.UUID, 
 	}
 
 	if product.VendorID != vendorID {
-		return nil, shared.ErrNotFound
+		return nil, shared.ErrForbidden
 	}
 
 	if input.CategoryID != nil {
@@ -191,7 +191,7 @@ func (s *ProductService) ArchiveProduct(ctx context.Context, vendorID uuid.UUID,
 	}
 
 	if product.VendorID != vendorID {
-		return nil, shared.ErrNotFound
+		return nil, shared.ErrForbidden
 	}
 
 	archived, err := s.productRepo.ArchiveProduct(ctx, productID)

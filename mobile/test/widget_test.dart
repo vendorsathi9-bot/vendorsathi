@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vendorsaathi_mobile/core/localization/locale_provider.dart';
 import 'package:vendorsaathi_mobile/main.dart';
 import 'package:vendorsaathi_mobile/shared/models/models.dart';
 import 'package:vendorsaathi_mobile/shared/widgets/osm_map_view.dart';
+import 'package:vendorsaathi_mobile/shared/widgets/sales_trend_chart.dart';
 
 void main() {
-  testWidgets('App renders language selection on first launch', (WidgetTester tester) async {
+  testWidgets('App renders branded splash screen on startup and transitions to language selection', (WidgetTester tester) async {
+    await tester.pumpWidget(const VendorSaathiApp(initialLanguage: null, skipSplash: false));
+    await tester.pump();
+
+    // Verify splash screen branding elements are visible
+    expect(find.text('VendorSaathi'), findsOneWidget);
+    expect(find.byIcon(Icons.storefront_rounded), findsOneWidget);
+
+    // Fast-forward past the splash timer (1200ms)
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pumpAndSettle();
+
+    // Transitions to first-launch language selection
+    expect(find.text('Choose your preferred language'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+    expect(find.text('ಕನ್ನಡ'), findsOneWidget);
+  });
+
+  testWidgets('App renders language selection on first launch when skipping splash', (WidgetTester tester) async {
     // When initialLanguage is null (first launch), language selection screen is rendered
-    await tester.pumpWidget(const VendorSaathiApp(initialLanguage: null));
+    await tester.pumpWidget(const VendorSaathiApp(initialLanguage: null, skipSplash: true));
     await tester.pump();
 
     expect(find.text('Choose your preferred language'), findsOneWidget);
@@ -16,7 +36,7 @@ void main() {
   });
 
   testWidgets('App renders login screen when language is pre-selected', (WidgetTester tester) async {
-    await tester.pumpWidget(const VendorSaathiApp(initialLanguage: 'en'));
+    await tester.pumpWidget(const VendorSaathiApp(initialLanguage: 'en', skipSplash: true));
     await tester.pump();
 
     expect(find.text('VendorSaathi'), findsOneWidget);
@@ -134,5 +154,61 @@ void main() {
     expect(find.text('OSM Directions'), findsOneWidget);
     expect(find.text('Vendor'), findsOneWidget);
     expect(find.text('Customer'), findsOneWidget);
+  });
+
+  testWidgets('SalesTrendChart displays empty state when no sales exist', (WidgetTester tester) async {
+    final emptyTrends = [
+      SalesTrendModel(date: '2026-11-03', orderCount: 0, salesPaise: 0, profitPaise: 0),
+      SalesTrendModel(date: '2026-11-04', orderCount: 0, salesPaise: 0, profitPaise: 0),
+    ];
+
+    await tester.pumpWidget(
+      LocaleProvider(
+        currentLanguage: 'en',
+        setLanguage: (_) {},
+        child: MaterialApp(
+          home: Scaffold(
+            body: SalesTrendChart(trends: emptyTrends),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('No sales recorded in the past 7 days'), findsOneWidget);
+  });
+
+  testWidgets('SalesTrendChart renders sales bars and totals when data exists', (WidgetTester tester) async {
+    final trends = [
+      SalesTrendModel(date: '2026-11-06', orderCount: 0, salesPaise: 0, profitPaise: 0),
+      SalesTrendModel(date: '2026-11-07', orderCount: 2, salesPaise: 60000, profitPaise: 9000),
+    ];
+
+    await tester.pumpWidget(
+      LocaleProvider(
+        currentLanguage: 'en',
+        setLanguage: (_) {},
+        child: MaterialApp(
+          home: Scaffold(
+            body: SalesTrendChart(trends: trends),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Sales Trends'), findsOneWidget);
+    expect(find.text('₹600.00'), findsWidgets);
+    expect(find.text('2'), findsWidgets);
+  });
+
+  testWidgets('Kannada language selection renders Kannada text immediately', (WidgetTester tester) async {
+    await tester.pumpWidget(const VendorSaathiApp(initialLanguage: 'kn', skipSplash: true));
+    await tester.pump();
+
+    expect(find.text('ವೆಂಡರ್‌ಸಾಥಿ'), findsOneWidget);
+    expect(find.text('ಸೈನ್ ಇನ್'), findsWidgets);
+    expect(find.text('ದೂರವಾಣಿ ಸಂಖ್ಯೆ'), findsOneWidget);
+    expect(find.text('ಪಾಸ್‌ವರ್ಡ್'), findsOneWidget);
   });
 }

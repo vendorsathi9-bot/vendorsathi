@@ -156,6 +156,39 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 }
 
 func (h *ProductHandler) GetMyProducts(c *gin.Context) {
+	// If vendor_id query parameter is provided, allow public/customer browsing of that vendor's products
+	vendorIDParam := c.Query("vendor_id")
+	if vendorIDParam != "" {
+		vendorID, err := uuid.Parse(vendorIDParam)
+		if err != nil {
+			httpx.ErrorBadRequest(c, "invalid vendor id", nil)
+			return
+		}
+
+		params := httpx.PaginationParams{}
+		if err := c.ShouldBindQuery(&params); err != nil {
+			httpx.ErrorBadRequest(c, "invalid query parameters", nil)
+			return
+		}
+
+		activeOnly := true
+		if activeStr := c.Query("active_only"); activeStr != "" {
+			if parsed, err := strconv.ParseBool(activeStr); err == nil {
+				activeOnly = parsed
+			}
+		}
+
+		output, err := h.productService.GetMyProducts(c.Request.Context(), vendorID, params.Limit, params.Cursor, activeOnly)
+		if err != nil {
+			h.handleError(c, err)
+			return
+		}
+
+		httpx.RespondPaginated(c, output.Data, output.NextCursor, output.HasMore)
+		return
+	}
+
+	// Without vendor_id parameter, caller is managing their own vendor catalog
 	userIDStr, exists := c.Get("user_id")
 	if !exists {
 		httpx.ErrorUnauthorized(c, "user not authenticated")
@@ -168,12 +201,15 @@ func (h *ProductHandler) GetMyProducts(c *gin.Context) {
 		return
 	}
 
-	rolesVal, _ := c.Get("roles")
-	userRoles := rolesVal.([]string)
+	rolesVal, hasRoles := c.Get("roles")
+	var userRoles []string
+	if hasRoles && rolesVal != nil {
+		userRoles = rolesVal.([]string)
+	}
 
 	isVendor := false
 	for _, r := range userRoles {
-		if r == "VENDOR" {
+		if r == "VENDOR" || r == "ADMIN" || r == "SUPER_ADMIN" {
 			isVendor = true
 			break
 		}

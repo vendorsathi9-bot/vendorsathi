@@ -80,22 +80,42 @@ func (r *UdhaarRepository) GetAccountsByVendor(ctx context.Context, vendorID uui
 
 	if cursor == "" {
 		rows, err = r.pool.Query(ctx, `
-			SELECT id, vendor_id, customer_id, status, credit_limit_paise, created_at, updated_at
-			FROM udhaar_accounts WHERE vendor_id = $1
-			ORDER BY created_at DESC, id DESC LIMIT $2
+			SELECT ua.id, ua.vendor_id, ua.customer_id, ua.status, ua.credit_limit_paise, ua.created_at, ua.updated_at,
+			       cp.display_name, u.phone
+			FROM udhaar_accounts ua
+			LEFT JOIN customer_profiles cp ON cp.user_id = ua.customer_id
+			LEFT JOIN users u ON u.id = ua.customer_id
+			WHERE ua.vendor_id = $1
+			ORDER BY ua.created_at DESC, ua.id DESC LIMIT $2
 		`, vendorID, limit+1)
 	} else {
 		rows, err = r.pool.Query(ctx, `
-			SELECT id, vendor_id, customer_id, status, credit_limit_paise, created_at, updated_at
-			FROM udhaar_accounts WHERE vendor_id = $1 AND id < $2::uuid
-			ORDER BY created_at DESC, id DESC LIMIT $3
+			SELECT ua.id, ua.vendor_id, ua.customer_id, ua.status, ua.credit_limit_paise, ua.created_at, ua.updated_at,
+			       cp.display_name, u.phone
+			FROM udhaar_accounts ua
+			LEFT JOIN customer_profiles cp ON cp.user_id = ua.customer_id
+			LEFT JOIN users u ON u.id = ua.customer_id
+			WHERE ua.vendor_id = $1 AND ua.id < $2::uuid
+			ORDER BY ua.created_at DESC, ua.id DESC LIMIT $3
 		`, vendorID, cursor, limit+1)
 	}
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanAccounts(rows)
+
+	var accounts []model.UdhaarAccount
+	for rows.Next() {
+		var a model.UdhaarAccount
+		if err := rows.Scan(
+			&a.ID, &a.VendorID, &a.CustomerID, &a.Status, &a.CreditLimitPaise, &a.CreatedAt, &a.UpdatedAt,
+			&a.CustomerName, &a.CustomerPhone,
+		); err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, a)
+	}
+	return accounts, rows.Err()
 }
 
 // GetAccountsByCustomer returns paginated udhaar accounts for a customer.
