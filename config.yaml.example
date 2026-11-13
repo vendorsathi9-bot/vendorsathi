@@ -5,6 +5,8 @@ LOG_LEVEL: "debug"
 REQUEST_TIMEOUT: "30s"
 MIGRATION:
   PATH: "file://migrations"
+  # Apply pending migrations automatically at API startup (safe and idempotent).
+  AUTO_APPLY: true
 
 JWT:
   SIGNING_KEY: "your-super-secret-signing-key-change-in-production-min-32-chars"

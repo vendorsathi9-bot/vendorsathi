@@ -24,6 +24,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       try {
         const res = await ApiClient.me();
+        const roles = res.user?.roles ?? [];
+        if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
+          ApiClient.setToken(null);
+          setUser(null);
+          return;
+        }
         setUser(res.user);
       } catch (err) {
         ApiClient.setToken(null);
@@ -44,6 +50,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (phone: string, pass: string) => {
     const data = await ApiClient.login(phone, pass);
+    const roles = data.user?.roles ?? [];
+    if (!roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN')) {
+      // The backend authenticates the user, but this portal is admin-only.
+      ApiClient.setToken(null);
+      throw new Error('This account does not have admin access.');
+    }
     setUser(data.user);
   };
 

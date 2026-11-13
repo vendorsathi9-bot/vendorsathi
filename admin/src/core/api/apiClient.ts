@@ -156,7 +156,10 @@ export interface MapConfigData {
 // hardcodes a tile provider URL.
 export const DEFAULT_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
-const BASE_URL = '/api/v1';
+// Defaults to the same-origin Vite/Vercel proxy path. Set VITE_API_BASE_URL to
+// call the backend directly (the backend's CORS_ORIGINS must then include the
+// admin origin).
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '');
 
 export class ApiClient {
   private static token: string | null = localStorage.getItem('access_token');
@@ -189,15 +192,19 @@ export class ApiClient {
       headers,
     });
 
-    if (res.status === 401) {
-      this.setToken(null);
-      window.dispatchEvent(new Event('auth:unauthorized'));
-      throw new Error('Session expired. Please log in again.');
-    }
-
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
       const msg = errBody?.error?.message || errBody?.message || `Request failed (${res.status})`;
+
+      // A 401 from the login endpoint means invalid credentials, not an
+      // expired session. Preserve the server message so the login form can
+      // show "invalid credentials" instead of "session expired".
+      if (res.status === 401 && endpoint !== '/auth/login') {
+        this.setToken(null);
+        window.dispatchEvent(new Event('auth:unauthorized'));
+        throw new Error('Session expired. Please log in again.');
+      }
+
       throw new Error(msg);
     }
 

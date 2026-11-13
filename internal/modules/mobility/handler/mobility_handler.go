@@ -10,6 +10,7 @@ import (
 	"vendorsaathi/internal/modules/mobility/model"
 	"vendorsaathi/internal/modules/mobility/service"
 	"vendorsaathi/internal/platform/httpx"
+	"vendorsaathi/internal/platform/logger"
 )
 
 type MobilityHandler struct {
@@ -31,7 +32,8 @@ func (h *MobilityHandler) FindNearbyVendors(c *gin.Context) {
 
 	vendors, err := h.service.FindNearbyVendors(c.Request.Context(), query.Latitude, query.Longitude, query.RadiusKm)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		logger.Logger.Error().Err(err).Str("request_id", c.GetString("request_id")).Msg("nearby vendors query failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -48,7 +50,8 @@ func (h *MobilityHandler) GetRoute(c *gin.Context) {
 
 	route, err := h.service.GetRoute(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "routing failed: " + err.Error()})
+		logger.Logger.Error().Err(err).Str("request_id", c.GetString("request_id")).Msg("route request failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "routing failed"})
 		return
 	}
 

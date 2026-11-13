@@ -94,6 +94,11 @@ type PaymentConfig struct {
 
 type MigrationConfig struct {
 	Path string `mapstructure:"PATH"`
+	// AutoApply runs all pending migrations during application startup.
+	// It is safe to leave enabled: migrations are versioned, idempotent and
+	// serialized with a PostgreSQL advisory lock so multiple replicas cannot
+	// apply the same migration concurrently.
+	AutoApply bool `mapstructure:"AUTO_APPLY"`
 }
 
 func Load() (*Config, error) {
@@ -127,6 +132,7 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("JWT.ACCESS_TOKEN_TTL", "JWT_ACCESS_TOKEN_TTL")
 	_ = v.BindEnv("JWT.REFRESH_TOKEN_TTL", "JWT_REFRESH_TOKEN_TTL")
 	_ = v.BindEnv("MIGRATION.PATH", "MIGRATION_PATH")
+	_ = v.BindEnv("MIGRATION.AUTO_APPLY", "MIGRATION_AUTO_APPLY")
 	_ = v.BindEnv("MAP.PROVIDER", "MAP_PROVIDER")
 	_ = v.BindEnv("MAP.STYLE_URL", "MAP_STYLE_URL")
 	_ = v.BindEnv("MAP.TILE_URL", "MAP_TILE_URL")
@@ -188,6 +194,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("REQUEST_TIMEOUT", 30*time.Second)
 	v.SetDefault("MIGRATION.PATH", "file://migrations")
+	v.SetDefault("MIGRATION.AUTO_APPLY", true)
 
 	v.SetDefault("JWT.ISSUER", "vendorsaathi")
 	v.SetDefault("JWT.AUDIENCE", "vendorsaathi-api")

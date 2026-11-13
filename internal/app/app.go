@@ -67,6 +67,7 @@ import (
 	"vendorsaathi/internal/platform/auth"
 	"vendorsaathi/internal/platform/database"
 	"vendorsaathi/internal/platform/logger"
+	"vendorsaathi/internal/platform/migration"
 )
 
 type Application struct {
@@ -103,6 +104,20 @@ func New(cfg *config.Config) (*Application, error) {
 	dbPool, err := database.NewPool(context.Background(), database.DefaultConfig(cfg.DatabaseURL))
 	if err != nil {
 		return nil, fmt.Errorf("database connection: %w", err)
+	}
+
+	// Apply pending schema migrations before constructing handlers. This is
+	// what guarantees a reachable-but-unmigrated database (the production
+	// failure mode) is repaired automatically on deploy instead of serving
+	// HTTP 500s for every database-backed endpoint.
+	migrationRunner := migration.NewRunner(dbPool, cfg.Migration.Path)
+	if cfg.Migration.AutoApply {
+		migrationCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if err := migrationRunner.Up(migrationCtx); err != nil {
+			dbPool.Close()
+			return nil, fmt.Errorf("database migration: %w", err)
+		}
 	}
 
 	jwtManager := auth.NewJWTManager(
@@ -202,7 +217,7 @@ func New(cfg *config.Config) (*Application, error) {
 		delivery:      deliveryHandler,
 	}
 
-	router := setupRouter(cfg, jwtManager, handlers, dbPool)
+	router := setupRouter(cfg, jwtManager, handlers, dbPool, migrationRunner)
 
 	server := &http.Server{
 		Addr:         cfg.HTTPAddr,
@@ -221,7 +236,7 @@ func New(cfg *config.Config) (*Application, error) {
 	}, nil
 }
 
-func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, dbPool *pgxpool.Pool) *gin.Engine {
+func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, dbPool *pgxpool.Pool, migrationRunner *migration.Runner) *gin.Engine {
 	if !cfg.IsDevelopment() {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -242,12 +257,21 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 	})
 
 	router.GET("/health/ready", func(c *gin.Context) {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
+
 		if err := dbPool.Ping(ctx); err != nil {
-			c.JSON(503, gin.H{"status": "not ready", "error": err.Error()})
+			logger.Logger.Error().Err(err).Str("request_id", c.GetString("request_id")).Msg("readiness check: database ping failed")
+			c.JSON(503, gin.H{"status": "not ready"})
 			return
 		}
+
+		if err := migrationRunner.CheckReady(ctx); err != nil {
+			logger.Logger.Error().Err(err).Str("request_id", c.GetString("request_id")).Msg("readiness check: schema not ready")
+			c.JSON(503, gin.H{"status": "not ready"})
+			return
+		}
+
 		c.JSON(200, gin.H{"status": "ready"})
 	})
 

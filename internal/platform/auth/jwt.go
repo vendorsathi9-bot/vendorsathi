@@ -20,9 +20,15 @@ var (
 	ErrTokenRevoked  = errors.New("token revoked")
 )
 
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
 type Claims struct {
 	UserID      string   `json:"user_id"`
 	SessionID   string   `json:"session_id"`
+	TokenType   string   `json:"token_type"`
 	Roles       []string `json:"roles"`
 	Permissions []string `json:"permissions,omitempty"`
 	jwt.RegisteredClaims
@@ -61,6 +67,7 @@ func (m *JWTManager) GenerateTokenPair(userID, sessionID string, roles, permissi
 	accessClaims := Claims{
 		UserID:      userID,
 		SessionID:   sessionID,
+		TokenType:   TokenTypeAccess,
 		Roles:       roles,
 		Permissions: permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -83,6 +90,7 @@ func (m *JWTManager) GenerateTokenPair(userID, sessionID string, roles, permissi
 	refreshClaims := Claims{
 		UserID:    userID,
 		SessionID: sessionID,
+		TokenType: TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    m.issuer,
 			Audience:  jwt.ClaimStrings{m.audience},
@@ -137,6 +145,14 @@ func (m *JWTManager) validateToken(tokenString string, isAccess bool) (*Claims, 
 	}
 
 	if claims.UserID == "" || claims.SessionID == "" {
+		return nil, ErrInvalidClaims
+	}
+
+	expectedType := TokenTypeAccess
+	if !isAccess {
+		expectedType = TokenTypeRefresh
+	}
+	if claims.TokenType != expectedType {
 		return nil, ErrInvalidClaims
 	}
 

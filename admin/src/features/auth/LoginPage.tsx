@@ -6,8 +6,8 @@ import { ShieldCheck, Lock, Phone, Globe } from 'lucide-react';
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const { language, toggleLanguage } = useLanguage();
-  const [phone, setPhone] = useState('+919876543210');
-  const [password, setPassword] = useState('AdminPassword123!');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -68,8 +68,9 @@ export const LoginPage: React.FC = () => {
                 <Phone size={18} />
               </div>
               <input
-                type="text"
+                type="tel"
                 required
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+919876543210"
@@ -89,6 +90,7 @@ export const LoginPage: React.FC = () => {
               <input
                 type="password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -109,18 +111,11 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setPhone('+919876543210');
-              setPassword('AdminPassword123!');
-            }}
-            style={{ fontSize: '0.75rem', color: '#64748b', textDecoration: 'underline' }}
-          >
-            {language === 'kn' ? 'ಡೆಮೊ ಅಡ್ಮಿನ್ ಮಾಹಿತಿ ತುಂಬಿ' : 'Fill demo admin credentials'}
-          </button>
-        </div>
+        <p style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+          {language === 'kn'
+            ? 'ನಿಮ್ಮ ನಿರ್ವಾಹಕ ಫೋನ್ ಸಂಖ್ಯೆ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ಬಳಸಿ'
+            : 'Use your administrator phone number and password'}
+        </p>
       </div>
     </div>
   );

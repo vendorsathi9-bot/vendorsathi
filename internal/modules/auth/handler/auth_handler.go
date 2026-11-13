@@ -8,6 +8,7 @@ import (
 	"vendorsaathi/internal/modules/auth/model"
 	"vendorsaathi/internal/modules/auth/service"
 	"vendorsaathi/internal/platform/httpx"
+	"vendorsaathi/internal/platform/logger"
 	"vendorsaathi/internal/shared"
 )
 
@@ -139,7 +140,8 @@ func (h *AuthHandler) handleError(c *gin.Context, err error) {
 		case "PAYMENT_LIMIT_EXCEEDED", "REFUND_LIMIT_EXCEEDED", "UDHAAR_LIMIT_EXCEEDED":
 			httpx.ErrorConflict(c, appErr.Message, nil)
 		default:
-			httpx.ErrorInternal(c, appErr.Message)
+			logAuthError(c, err)
+			httpx.ErrorInternal(c, "internal server error")
 		}
 		return
 	}
@@ -165,5 +167,18 @@ func (h *AuthHandler) handleError(c *gin.Context, err error) {
 		return
 	}
 
+	logAuthError(c, err)
 	httpx.ErrorInternal(c, "internal server error")
+}
+
+// logAuthError records the internal cause of an authentication failure while
+// keeping the HTTP response generic. It never logs request bodies, passwords,
+// tokens or database URLs.
+func logAuthError(c *gin.Context, err error) {
+	logger.Logger.Error().
+		Err(err).
+		Str("request_id", c.GetString("request_id")).
+		Str("route", c.FullPath()).
+		Str("method", c.Request.Method).
+		Msg("authentication request failed")
 }

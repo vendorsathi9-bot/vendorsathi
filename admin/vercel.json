@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/health/:path*",
+      "destination": "https://vendorsathi.onrender.com/health/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://vendorsathi.onrender.com/api/:path*"
     }

@@ -9,7 +9,9 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /vendorsaathi-api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /vendorsaathi-api ./cmd/api \
+    && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /vendorsaathi-migrate ./cmd/migrate \
+    && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /vendorsaathi-create-admin ./cmd/create-admin
 
 FROM alpine:3.20
 
@@ -18,6 +20,8 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /vendorsaathi-api .
+COPY --from=builder /vendorsaathi-migrate .
+COPY --from=builder /vendorsaathi-create-admin .
 COPY --from=builder /app/migrations ./migrations
 COPY --from=builder /app/config.yaml.example ./config.yaml.example
 

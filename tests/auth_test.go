@@ -19,15 +19,16 @@ import (
 // In-memory mock repositories and test helpers
 
 type mockUserRepo struct {
-	users           map[uuid.UUID]*authmodel.User
-	usersByPhone    map[string]*authmodel.User
-	usersByEmail    map[string]*authmodel.User
-	userRoles       map[uuid.UUID][]string
-	userPermissions map[uuid.UUID][]string
-	roles           map[string]*authmodel.Role
-	refreshSessions map[string]*authmodel.RefreshSession
-	createUserErr   error
-	assignRoleErr   error
+	users             map[uuid.UUID]*authmodel.User
+	usersByPhone      map[string]*authmodel.User
+	usersByEmail      map[string]*authmodel.User
+	userRoles         map[uuid.UUID][]string
+	userPermissions   map[uuid.UUID][]string
+	roles             map[string]*authmodel.Role
+	refreshSessions   map[string]*authmodel.RefreshSession
+	createUserErr     error
+	assignRoleErr     error
+	getUserByPhoneErr error
 }
 
 func newMockUserRepo() *mockUserRepo {
@@ -110,6 +111,9 @@ func (m *mockUserRepo) CreateUser(ctx context.Context, phone, email, passwordHas
 }
 
 func (m *mockUserRepo) GetUserByPhone(ctx context.Context, phone string) (*authmodel.User, error) {
+	if m.getUserByPhoneErr != nil {
+		return nil, m.getUserByPhoneErr
+	}
 	u, ok := m.usersByPhone[phone]
 	if !ok {
 		return nil, shared.ErrNotFound

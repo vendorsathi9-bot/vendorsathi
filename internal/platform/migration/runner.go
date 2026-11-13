@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 `
 
+// migrationAdvisoryLockID serializes migration runs across API replicas.
+// The value is an arbitrary, stable application-specific lock key.
+const migrationAdvisoryLockID int64 = 0x56454E4453414154 // "VENDSAAT"
+
 // Migration represents a single versioned SQL migration file.
 type Migration struct {
 	Version int64
@@ -59,7 +63,32 @@ func NewRunner(pool *pgxpool.Pool, migrPath string) *Runner {
 
 // Up applies all pending migrations in ascending version order.
 // It is safe to call multiple times; already-applied migrations are skipped.
+//
+// A PostgreSQL advisory lock is held for the duration of the run so that
+// multiple application replicas starting at the same time cannot apply the
+// same migration concurrently.
 func (r *Runner) Up(ctx context.Context) error {
+	conn, err := r.pool.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("migration: acquire connection: %w", err)
+	}
+	defer conn.Release()
+
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock($1)`, pgx.QueryExecModeExec, migrationAdvisoryLockID); err != nil {
+		return fmt.Errorf("migration: acquire advisory lock: %w", err)
+	}
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = conn.Exec(unlockCtx, `SELECT pg_advisory_unlock($1)`, pgx.QueryExecModeExec, migrationAdvisoryLockID)
+	}()
+
+	return r.upLocked(ctx)
+}
+
+// upLocked performs the actual migration work. Callers must hold the
+// advisory lock returned by Up.
+func (r *Runner) upLocked(ctx context.Context) error {
 	if err := r.ensureMigrationsTable(ctx); err != nil {
 		return fmt.Errorf("migration: ensure schema_migrations table: %w", err)
 	}
@@ -112,6 +141,45 @@ func (r *Runner) Status(ctx context.Context) error {
 		}
 		fmt.Printf("  [%s] %03d %s\n", state, m.Version, m.Name)
 	}
+	return nil
+}
+
+// CheckReady verifies that the database schema is fully migrated and that the
+// core application tables exist. It is used by the readiness probe so a
+// database that is reachable but unmigrated is never reported as ready.
+func (r *Runner) CheckReady(ctx context.Context) error {
+	migrations, err := r.discoverMigrations()
+	if err != nil {
+		return fmt.Errorf("discover migrations: %w", err)
+	}
+
+	applied, err := r.appliedVersions(ctx)
+	if err != nil {
+		return fmt.Errorf("read applied migrations: %w", err)
+	}
+
+	var pending []string
+	for _, m := range migrations {
+		if _, ok := applied[m.Version]; !ok {
+			pending = append(pending, fmt.Sprintf("%03d_%s", m.Version, m.Name))
+		}
+	}
+	if len(pending) > 0 {
+		return fmt.Errorf("pending migrations: %s", strings.Join(pending, ", "))
+	}
+
+	var coreSchemaReady bool
+	err = r.pool.QueryRow(ctx,
+		`SELECT to_regclass('users') IS NOT NULL AND to_regclass('vendor_profiles') IS NOT NULL`,
+		pgx.QueryExecModeSimpleProtocol,
+	).Scan(&coreSchemaReady)
+	if err != nil {
+		return fmt.Errorf("check core schema: %w", err)
+	}
+	if !coreSchemaReady {
+		return fmt.Errorf("core application tables are missing")
+	}
+
 	return nil
 }
 
@@ -173,7 +241,7 @@ func (r *Runner) appliedVersions(ctx context.Context) (map[int64]struct{}, error
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pool.Query(ctx, `SELECT version FROM schema_migrations ORDER BY version`)
+	rows, err := r.pool.Query(ctx, `SELECT version FROM schema_migrations ORDER BY version`, pgx.QueryExecModeSimpleProtocol)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +295,7 @@ func (r *Runner) applyOne(ctx context.Context, m Migration) error {
 
 	if _, err := tx.Exec(applyCtx,
 		`INSERT INTO schema_migrations (version, name) VALUES ($1, $2)`,
-		m.Version, m.Name,
+		pgx.QueryExecModeExec, m.Version, m.Name,
 	); err != nil {
 		_ = tx.Rollback(applyCtx)
 		return fmt.Errorf("record migration: %w", err)
