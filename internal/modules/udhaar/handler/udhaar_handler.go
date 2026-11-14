@@ -247,6 +247,6 @@ func handleUdhaarError(c *gin.Context, err error) {
 	case errors.Is(err, shared.ErrUdhaarLimitExceeded):
 		httpx.ErrorUnprocessable(c, "repayment exceeds outstanding udhaar balance", nil)
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
 }

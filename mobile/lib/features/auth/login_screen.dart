@@ -25,8 +25,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController(text: '+919876500001');
-  final _passwordController = TextEditingController(text: 'VendorPassword123!');
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       final token = res['access_token'] as String;
-      widget.apiClient.setToken(token);
+      widget.apiClient.setTokens(token, res['refresh_token'] as String?);
 
       final user = UserModel.fromJson(res['user']);
 
@@ -285,8 +285,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Demo Test Account Quick-Login Pills (Development only)
-                if (kDebugMode || const bool.fromEnvironment('ALLOW_DEMO_ACCOUNTS', defaultValue: true)) ...[
+                // Demo Test Account Quick-Login Pills. Off by default; enable
+                // explicitly for local development with:
+                //   --dart-define=ALLOW_DEMO_ACCOUNTS=true
+                if (kDebugMode && const bool.fromEnvironment('ALLOW_DEMO_ACCOUNTS', defaultValue: false)) ...[
                   const Divider(),
                   const SizedBox(height: 14),
                   Text(

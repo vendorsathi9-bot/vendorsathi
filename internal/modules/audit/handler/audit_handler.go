@@ -65,5 +65,5 @@ func handleAuditError(c *gin.Context, err error) {
 		}
 		return
 	}
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 }

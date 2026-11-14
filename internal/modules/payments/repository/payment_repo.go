@@ -252,4 +252,3 @@ func (r *PaymentRepository) ConfirmPayment(ctx context.Context, paymentID uuid.U
 	}
 	return &p, nil
 }
-

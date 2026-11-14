@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -419,20 +420,20 @@ func (r *InventoryRepository) GetMovements(ctx context.Context, productID uuid.U
 		FROM inventory_movements WHERE product_id = $1
 	`
 	args := []interface{}{productID}
-	argIdx := 2
-
-	query += ` ORDER BY created_at DESC LIMIT $` + string(rune(argIdx+'0'))
-	args = append(args, limit+1)
-	argIdx++
 
 	if cursor != "" {
 		cursorTime, err := time.Parse(time.RFC3339Nano, cursor)
 		if err != nil {
 			return nil, "", false, err
 		}
-		query += ` AND created_at < $` + string(rune(argIdx+'0'))
+		// The cursor predicate must be part of the WHERE clause, before
+		// ORDER BY/LIMIT, otherwise PostgreSQL rejects the statement.
 		args = append(args, cursorTime)
+		query += fmt.Sprintf(` AND created_at < $%d`, len(args))
 	}
+
+	args = append(args, limit+1)
+	query += fmt.Sprintf(` ORDER BY created_at DESC LIMIT $%d`, len(args))
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -460,6 +461,27 @@ func (r *InventoryRepository) GetMovements(ctx context.Context, productID uuid.U
 	}
 
 	return movements, nextCursor, hasMore, rows.Err()
+}
+
+// VendorOwnsProduct reports whether userID owns the vendor that sells the
+// product. Both canonical vendor profile IDs and legacy owner-user IDs stored
+// directly in products.vendor_id are accepted.
+func (r *InventoryRepository) VendorOwnsProduct(ctx context.Context, productID, userID uuid.UUID) (bool, error) {
+	var owns bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM products p
+			JOIN vendor_profiles vp ON vp.id = p.vendor_id
+			WHERE p.id = $1 AND vp.owner_user_id = $2
+		) OR EXISTS(
+			SELECT 1 FROM products WHERE id = $1 AND vendor_id = $2
+		)
+	`, productID, userID).Scan(&owns)
+	if err != nil {
+		return false, err
+	}
+	return owns, nil
 }
 
 func (r *InventoryRepository) GetInventoryByVendor(ctx context.Context, vendorID uuid.UUID) ([]model.Inventory, error) {

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -127,24 +128,24 @@ func (r *ProductRepository) GetProductsByVendorID(ctx context.Context, vendorID 
 		FROM products WHERE vendor_id = $1
 	`
 	args := []interface{}{vendorID}
-	argIdx := 2
 
 	if activeOnly {
 		query += ` AND active = TRUE`
 	}
-
-	query += ` ORDER BY created_at DESC LIMIT $` + string(rune(argIdx+'0'))
-	args = append(args, limit+1)
-	argIdx++
 
 	if cursor != "" {
 		cursorID, err := uuid.Parse(cursor)
 		if err != nil {
 			return nil, "", false, err
 		}
-		query += ` AND id < $` + string(rune(argIdx+'0'))
+		// Keep the cursor predicate inside the WHERE clause and paginate on
+		// the same (created_at, id) ordering used below.
 		args = append(args, cursorID)
+		query += fmt.Sprintf(` AND (created_at, id) < (SELECT created_at, id FROM products WHERE id = $%d)`, len(args))
 	}
+
+	args = append(args, limit+1)
+	query += fmt.Sprintf(` ORDER BY created_at DESC, id DESC LIMIT $%d`, len(args))
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {

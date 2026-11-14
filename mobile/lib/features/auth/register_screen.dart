@@ -85,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       final token = res['access_token'] as String;
-      widget.apiClient.setToken(token);
+      widget.apiClient.setTokens(token, res['refresh_token'] as String?);
 
       final user = UserModel.fromJson(res['user']);
       widget.onRegisterSuccess(user);

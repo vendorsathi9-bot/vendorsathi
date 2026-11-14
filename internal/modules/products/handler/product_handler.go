@@ -152,7 +152,49 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 		return
 	}
 
+	isOwnerOrAdmin := h.canViewCost(c, output.VendorID)
+	if !isOwnerOrAdmin {
+		// Public callers must not discover archived products or private cost.
+		if !output.Active {
+			httpx.ErrorNotFound(c, "product not found")
+			return
+		}
+		output.CostPricePaise = 0
+	}
+
 	httpx.RespondOK(c, output)
+}
+
+// canViewCost hides vendor cost/margin data from public and non-owner callers.
+func (h *ProductHandler) canViewCost(c *gin.Context, vendorID uuid.UUID) bool {
+	var userID uuid.UUID
+	if val, ok := c.Get("user_id"); ok {
+		if str, ok := val.(string); ok {
+			userID, _ = uuid.Parse(str)
+		}
+	}
+
+	isAdmin := false
+	if val, ok := c.Get("roles"); ok {
+		if roles, ok := val.([]string); ok {
+			for _, r := range roles {
+				if r == "ADMIN" || r == "SUPER_ADMIN" {
+					isAdmin = true
+					break
+				}
+			}
+		}
+	}
+
+	return h.productService.CanViewCost(c.Request.Context(), vendorID, userID, isAdmin)
+}
+
+func hideCostPrices(c *gin.Context, h *ProductHandler, products []model.ProductOutput) {
+	for i := range products {
+		if !h.canViewCost(c, products[i].VendorID) {
+			products[i].CostPricePaise = 0
+		}
+	}
 }
 
 func (h *ProductHandler) GetMyProducts(c *gin.Context) {
@@ -177,6 +219,11 @@ func (h *ProductHandler) GetMyProducts(c *gin.Context) {
 				activeOnly = parsed
 			}
 		}
+		// Unauthenticated browsing must never reveal archived products, even
+		// if the caller passes active_only=false.
+		if _, authed := c.Get("user_id"); !authed {
+			activeOnly = true
+		}
 
 		output, err := h.productService.GetMyProducts(c.Request.Context(), vendorID, params.Limit, params.Cursor, activeOnly)
 		if err != nil {
@@ -184,6 +231,7 @@ func (h *ProductHandler) GetMyProducts(c *gin.Context) {
 			return
 		}
 
+		hideCostPrices(c, h, output.Data)
 		httpx.RespondPaginated(c, output.Data, output.NextCursor, output.HasMore)
 		return
 	}
@@ -401,6 +449,7 @@ func (h *ProductHandler) GetProductsByCategory(c *gin.Context) {
 		return
 	}
 
+	hideCostPrices(c, h, output)
 	httpx.RespondOK(c, output)
 }
 
@@ -418,6 +467,7 @@ func (h *ProductHandler) GetVendorProducts(c *gin.Context) {
 		return
 	}
 
+	hideCostPrices(c, h, output)
 	httpx.RespondOK(c, output)
 }
 

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -279,6 +280,41 @@ func (r *OrderRepository) GetOrderForUpdate(ctx context.Context, tx pgx.Tx, orde
 	return &o, nil
 }
 
+// VendorUserOwnsVendor reports whether userID owns the given vendor profile.
+// Legacy rows may store the owner user ID directly in orders.vendor_id, so both
+// forms are accepted. This is the single authorization check used before any
+// vendor-side order transition.
+func (r *OrderRepository) VendorUserOwnsVendor(ctx context.Context, vendorID, userID uuid.UUID) (bool, error) {
+	return vendorUserOwnsVendor(ctx, r.pool, vendorID, userID)
+}
+
+// VendorUserOwnsVendorTx is the transaction-scoped variant of
+// VendorUserOwnsVendor.
+func (r *OrderRepository) VendorUserOwnsVendorTx(ctx context.Context, tx pgx.Tx, vendorID, userID uuid.UUID) (bool, error) {
+	return vendorUserOwnsVendor(ctx, tx, vendorID, userID)
+}
+
+type rowQuerier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+func vendorUserOwnsVendor(ctx context.Context, q rowQuerier, vendorID, userID uuid.UUID) (bool, error) {
+	if vendorID == userID {
+		return true, nil
+	}
+	var owns bool
+	err := q.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM vendor_profiles
+			WHERE id = $1 AND owner_user_id = $2
+		)
+	`, vendorID, userID).Scan(&owns)
+	if err != nil {
+		return false, err
+	}
+	return owns, nil
+}
+
 // CreateCancellationRequest inserts a cancellation request within a transaction.
 func (r *OrderRepository) CreateCancellationRequest(ctx context.Context, tx pgx.Tx, orderID, requestedBy uuid.UUID, reason string, previousStatus model.OrderStatus) error {
 	_, err := tx.Exec(ctx, `
@@ -383,5 +419,5 @@ func toOrderOutput(o *model.Order, items []model.OrderItemOutput) *model.OrderOu
 }
 
 func itoa(i int) string {
-	return string(rune('0' + i))
+	return strconv.Itoa(i)
 }

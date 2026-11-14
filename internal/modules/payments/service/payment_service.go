@@ -342,4 +342,3 @@ func (s *PaymentService) VerifyGatewayPayment(ctx context.Context, cfg config.Pa
 	out := confirmed.ToOutput()
 	return &out, nil
 }
-

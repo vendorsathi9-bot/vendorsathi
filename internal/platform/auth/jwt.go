@@ -6,12 +6,16 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 )
+
+const argon2idPrefix = "$argon2id$"
 
 var (
 	ErrInvalidToken  = errors.New("invalid token")
@@ -127,11 +131,18 @@ func (m *JWTManager) ValidateRefreshToken(tokenString string) (*Claims, error) {
 func (m *JWTManager) validateToken(tokenString string, isAccess bool) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		// Pin the algorithm rather than accepting any HMAC variant. Accepting
+		// e.g. HS384 with an HS256 key is an algorithm-confusion hazard.
+		if token.Method != jwt.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return m.signingKey, nil
-	}, jwt.WithIssuer(m.issuer), jwt.WithAudience(m.audience))
+	},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithIssuer(m.issuer),
+		jwt.WithAudience(m.audience),
+		jwt.WithExpirationRequired(),
+	)
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
@@ -177,6 +188,148 @@ func HashPassword(password string, memory, iterations uint32, parallelism uint8,
 
 func (m *JWTManager) RefreshTTL() time.Duration {
 	return m.refreshTTL
+}
+
+// PasswordParams holds the Argon2id cost parameters used for newly created
+// password hashes. They are configurable so production deployments can tune
+// cost without changing code.
+type PasswordParams struct {
+	Memory      uint32
+	Iterations  uint32
+	Parallelism uint8
+	SaltLength  uint32
+	KeyLength   uint32
+}
+
+// DefaultPasswordParams returns the historical VendorSaathi defaults. Any
+// password hash created with HashPassword (legacy, unversioned format) can be
+// verified with these parameters.
+func DefaultPasswordParams() PasswordParams {
+	return PasswordParams{
+		Memory:      64 * 1024,
+		Iterations:  3,
+		Parallelism: 4,
+		SaltLength:  16,
+		KeyLength:   32,
+	}
+}
+
+func (p PasswordParams) validate() error {
+	if p.Memory == 0 || p.Iterations == 0 || p.Parallelism == 0 || p.SaltLength < 8 || p.KeyLength < 16 {
+		return errors.New("invalid argon2id parameters")
+	}
+	return nil
+}
+
+// HashPasswordPHC hashes a password using Argon2id and returns a versioned PHC
+// string: $argon2id$v=19$m=...,t=...,p=...$<salt>$<hash>. Storing the
+// parameters alongside the hash allows future cost increases without breaking
+// existing accounts.
+func HashPasswordPHC(password string, p PasswordParams) (string, error) {
+	if err := p.validate(); err != nil {
+		return "", err
+	}
+
+	salt := make([]byte, p.SaltLength)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+
+	hash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, p.KeyLength)
+
+	return fmt.Sprintf("%s$v=%d$m=%d,t=%d,p=%d$%s$%s",
+		strings.TrimSuffix(argon2idPrefix, "$"),
+		argon2.Version,
+		p.Memory, p.Iterations, p.Parallelism,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(hash),
+	), nil
+}
+
+// VerifyPasswordWithParams verifies both PHC-formatted hashes and the legacy
+// unversioned salt+hash format. The returned needsRehash flag is true when the
+// stored hash uses fewer resources than the configured parameters (or the
+// legacy format), so callers can transparently upgrade it on successful login.
+func VerifyPasswordWithParams(password, encoded string, p PasswordParams) (valid bool, needsRehash bool, err error) {
+	if err := p.validate(); err != nil {
+		return false, false, err
+	}
+
+	if strings.HasPrefix(encoded, argon2idPrefix) {
+		return verifyPHC(password, encoded, p)
+	}
+
+	// Legacy format: base64(salt || hash), no embedded parameters.
+	ok, err := VerifyPassword(password, encoded, p.Memory, p.Iterations, p.Parallelism, p.SaltLength, p.KeyLength)
+	if err != nil {
+		return false, false, err
+	}
+	return ok, true, nil
+}
+
+func verifyPHC(password, encoded string, p PasswordParams) (bool, bool, error) {
+	// $argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>
+	parts := strings.Split(encoded, "$")
+	if len(parts) != 6 || parts[1] != "argon2id" {
+		return false, false, errors.New("invalid password hash format")
+	}
+
+	versionPart := strings.TrimPrefix(parts[2], "v=")
+	version, err := strconv.Atoi(versionPart)
+	if err != nil || version != argon2.Version {
+		return false, false, errors.New("unsupported argon2 version")
+	}
+
+	var memory uint32
+	var iterations uint32
+	var parallelism uint8
+	for _, kv := range strings.Split(parts[3], ",") {
+		pair := strings.SplitN(kv, "=", 2)
+		if len(pair) != 2 {
+			return false, false, errors.New("invalid argon2 parameters")
+		}
+		switch pair[0] {
+		case "m":
+			v, convErr := strconv.ParseUint(pair[1], 10, 32)
+			if convErr != nil {
+				return false, false, errors.New("invalid argon2 memory parameter")
+			}
+			memory = uint32(v)
+		case "t":
+			v, convErr := strconv.ParseUint(pair[1], 10, 32)
+			if convErr != nil {
+				return false, false, errors.New("invalid argon2 iterations parameter")
+			}
+			iterations = uint32(v)
+		case "p":
+			v, convErr := strconv.ParseUint(pair[1], 10, 8)
+			if convErr != nil {
+				return false, false, errors.New("invalid argon2 parallelism parameter")
+			}
+			parallelism = uint8(v)
+		}
+	}
+	if memory == 0 || iterations == 0 || parallelism == 0 {
+		return false, false, errors.New("invalid argon2 parameters")
+	}
+
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil || len(salt) == 0 {
+		return false, false, errors.New("invalid password salt")
+	}
+	expected, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil || len(expected) == 0 {
+		return false, false, errors.New("invalid password hash")
+	}
+
+	actual := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(expected)))
+	matches := subtle.ConstantTimeCompare(expected, actual) == 1
+
+	needsRehash := memory < p.Memory || iterations < p.Iterations ||
+		parallelism < p.Parallelism || uint32(len(salt)) < p.SaltLength ||
+		uint32(len(expected)) < p.KeyLength
+
+	return matches, needsRehash, nil
 }
 
 func VerifyPassword(password, encodedHash string, memory, iterations uint32, parallelism uint8, saltLength, keyLength uint32) (bool, error) {

@@ -160,5 +160,5 @@ func handleNotificationError(c *gin.Context, err error) {
 		httpx.ErrorNotFound(c, "resource not found")
 		return
 	}
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 }

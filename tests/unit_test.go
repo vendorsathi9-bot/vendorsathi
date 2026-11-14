@@ -352,12 +352,12 @@ func TestRouteFallbackCalculation(t *testing.T) {
 	// 3. no fake road geometry is returned
 	// 4. no fabricated road duration is presented as actual road travel ETA
 	fallbackResp := map[string]interface{}{
-		"routing_available":             false,
-		"distance_type":                 "straight_line_estimate",
+		"routing_available":            false,
+		"distance_type":                "straight_line_estimate",
 		"approximate_straight_line_km": math.Round(straightLineKm*100) / 100,
-		"distance_km":                   0.0,
-		"duration_minutes":              0.0,
-		"geometry":                      nil,
+		"distance_km":                  0.0,
+		"duration_minutes":             0.0,
+		"geometry":                     nil,
 	}
 
 	if fallbackResp["routing_available"] != false {
@@ -400,10 +400,10 @@ func TestOSRMInvalidCoordinateRejection(t *testing.T) {
 	invalidCoords := []struct {
 		originLat, originLng, destLat, destLng float64
 	}{
-		{95.0, 77.5, 12.9, 77.6},    // Invalid origin lat
-		{12.9, 195.0, 12.9, 77.6},   // Invalid origin lng
-		{12.9, 77.5, -95.0, 77.6},   // Invalid dest lat
-		{12.9, 77.5, 12.9, -190.0},  // Invalid dest lng
+		{95.0, 77.5, 12.9, 77.6},   // Invalid origin lat
+		{12.9, 195.0, 12.9, 77.6},  // Invalid origin lng
+		{12.9, 77.5, -95.0, 77.6},  // Invalid dest lat
+		{12.9, 77.5, 12.9, -190.0}, // Invalid dest lng
 	}
 
 	for _, tc := range invalidCoords {
@@ -544,6 +544,3 @@ func TestProductAuthorizationAndOwnershipRules(t *testing.T) {
 		t.Errorf("expected admin to be authorized for product governance, got allowed=%v, err=%v", allowed, err)
 	}
 }
-
-
-

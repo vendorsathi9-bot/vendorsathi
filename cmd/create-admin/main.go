@@ -73,14 +73,13 @@ func run() error {
 	repo := authrepository.NewUserRepository(pool)
 	txManager := database.NewTxManager(pool)
 
-	passwordHash, err := auth.HashPassword(
-		password,
-		cfg.PasswordHash.Memory,
-		cfg.PasswordHash.Iterations,
-		cfg.PasswordHash.Parallelism,
-		cfg.PasswordHash.SaltLength,
-		cfg.PasswordHash.KeyLength,
-	)
+	passwordHash, err := auth.HashPasswordPHC(password, auth.PasswordParams{
+		Memory:      cfg.PasswordHash.Memory,
+		Iterations:  cfg.PasswordHash.Iterations,
+		Parallelism: cfg.PasswordHash.Parallelism,
+		SaltLength:  cfg.PasswordHash.SaltLength,
+		KeyLength:   cfg.PasswordHash.KeyLength,
+	})
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}

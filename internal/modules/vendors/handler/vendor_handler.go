@@ -132,7 +132,7 @@ func (h *VendorHandler) GetProfileByID(c *gin.Context) {
 func (h *VendorHandler) ListVendors(c *gin.Context) {
 	vendors, err := h.vendorService.ListVendors(c.Request.Context())
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 	httpx.RespondOK(c, vendors)

@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"vendorsaathi/internal/modules/reviews/model"
 	"vendorsaathi/internal/modules/reviews/repository"
+	"vendorsaathi/internal/shared"
 )
 
 type ReviewService struct {
@@ -17,6 +18,40 @@ func NewReviewService(repo *repository.ReviewRepository) *ReviewService {
 }
 
 func (s *ReviewService) CreateReview(ctx context.Context, customerID uuid.UUID, input model.CreateReviewInput) (*model.Review, error) {
+	if input.Rating < 1 || input.Rating > 5 {
+		return nil, shared.NewValidationError("rating", "must be between 1 and 5")
+	}
+
+	if input.OrderID != nil {
+		vendorID, status, err := s.repo.OrderReviewEligibility(ctx, *input.OrderID, customerID)
+		if err != nil {
+			return nil, err
+		}
+		if vendorID != input.VendorID {
+			return nil, shared.NewForbidden("review this vendor for the supplied order")
+		}
+		if status != "COMPLETED" {
+			return nil, shared.NewAppError("REVIEW_NOT_ALLOWED", "only completed orders can be reviewed", shared.ErrConflict)
+		}
+		exists, err := s.repo.ReviewExistsForOrder(ctx, *input.OrderID)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, shared.NewConflict("a review already exists for this order")
+		}
+	} else {
+		// Order-less reviews are still restricted to vendors the customer has
+		// actually purchased from.
+		ok, err := s.repo.CustomerHasCompletedOrderWithVendor(ctx, customerID, input.VendorID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, shared.NewForbidden("review this vendor without a completed order")
+		}
+	}
+
 	return s.repo.CreateReview(ctx, customerID, input)
 }
 

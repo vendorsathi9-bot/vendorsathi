@@ -131,11 +131,23 @@ func New(cfg *config.Config) (*Application, error) {
 	authUserRepo := authrepository.NewUserRepository(dbPool)
 	customersCustomerRepo := customersrepository.NewCustomerRepository(dbPool)
 	txManager := database.NewTxManager(dbPool)
-	authService := authservice.NewAuthService(authUserRepo, customersCustomerRepo, txManager, jwtManager, &database.RealClock{})
+	authService := authservice.NewAuthService(authUserRepo, customersCustomerRepo, txManager, jwtManager, &database.RealClock{}, auth.PasswordParams{
+		Memory:      cfg.PasswordHash.Memory,
+		Iterations:  cfg.PasswordHash.Iterations,
+		Parallelism: cfg.PasswordHash.Parallelism,
+		SaltLength:  cfg.PasswordHash.SaltLength,
+		KeyLength:   cfg.PasswordHash.KeyLength,
+	})
 	authHandler := authhandler.NewAuthHandler(authService)
 
 	usersUserRepo := usersrepository.NewUserRepository(dbPool)
-	usersService := usersservice.NewUserService(usersUserRepo)
+	usersService := usersservice.NewUserService(usersUserRepo, auth.PasswordParams{
+		Memory:      cfg.PasswordHash.Memory,
+		Iterations:  cfg.PasswordHash.Iterations,
+		Parallelism: cfg.PasswordHash.Parallelism,
+		SaltLength:  cfg.PasswordHash.SaltLength,
+		KeyLength:   cfg.PasswordHash.KeyLength,
+	})
 	usersHandler := usershandler.NewUserHandler(usersService)
 
 	vendorsVendorRepo := vendorsrepository.NewVendorRepository(dbPool)
@@ -220,11 +232,13 @@ func New(cfg *config.Config) (*Application, error) {
 	router := setupRouter(cfg, jwtManager, handlers, dbPool, migrationRunner)
 
 	server := &http.Server{
-		Addr:         cfg.HTTPAddr,
-		Handler:      router,
-		ReadTimeout:  cfg.RequestTimeout,
-		WriteTimeout: cfg.RequestTimeout,
-		IdleTimeout:  120 * time.Second,
+		Addr:              cfg.HTTPAddr,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       cfg.RequestTimeout,
+		WriteTimeout:      cfg.RequestTimeout,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	return &Application{
@@ -243,8 +257,17 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 
 	router := gin.New()
 
+	// Only honour X-Forwarded-For from explicitly configured proxies. When no
+	// proxies are configured Gin uses the TCP peer address for ClientIP.
+	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		logger.Logger.Warn().Err(err).Msg("invalid TRUSTED_PROXIES; trusting no proxy headers")
+		_ = router.SetTrustedProxies(nil)
+	}
+
 	router.Use(middleware.RequestIDMiddleware())
 	router.Use(middleware.RecoveryMiddleware())
+	router.Use(middleware.SecurityHeadersMiddleware(!cfg.IsDevelopment()))
+	router.Use(middleware.BodyLimitMiddleware(2 << 20)) // 2 MiB
 	router.Use(middleware.CORSMiddleware(cfg.CORSOrigins))
 
 	if cfg.IsDevelopment() {
@@ -297,13 +320,15 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 		public.GET("/vendors/:id/detail", h.vendors.GetVendorDetail)
 	}
 
-	// Auth routes
+	// Auth routes. Credential endpoints are rate limited per client IP to slow
+	// down password guessing and registration abuse.
+	authLimiter := middleware.NewRateLimiter(10, time.Minute)
 	authGroup := router.Group("/api/v1/auth")
 	{
-		authGroup.POST("/register", h.auth.Register)
-		authGroup.POST("/login", h.auth.Login)
-		authGroup.POST("/refresh", h.auth.Refresh)
-		authGroup.POST("/logout", h.auth.Logout)
+		authGroup.POST("/register", authLimiter.Middleware(), h.auth.Register)
+		authGroup.POST("/login", authLimiter.Middleware(), h.auth.Login)
+		authGroup.POST("/refresh", authLimiter.Middleware(), h.auth.Refresh)
+		authGroup.POST("/logout", authLimiter.Middleware(), h.auth.Logout)
 	}
 
 	// Protected routes
@@ -319,10 +344,12 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			usersGroup.PATCH("/me/profile", h.users.UpdateProfile)
 			usersGroup.POST("/change-password", h.users.ChangePassword)
 			usersGroup.GET("/:id", h.users.GetUser)
-			usersGroup.GET("", h.users.ListUsers)
-			usersGroup.PATCH("/:id/status", h.users.UpdateStatus)
-			usersGroup.POST("/:id/roles", h.users.AssignRole)
-			usersGroup.DELETE("/:id/roles", h.users.RevokeRole)
+			// Administrative user management is restricted at the router, in
+			// addition to service-level checks, so new handlers cannot forget it.
+			usersGroup.GET("", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.users.ListUsers)
+			usersGroup.PATCH("/:id/status", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.users.UpdateStatus)
+			usersGroup.POST("/:id/roles", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.users.AssignRole)
+			usersGroup.DELETE("/:id/roles", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.users.RevokeRole)
 		}
 
 		// Vendors routes
@@ -332,7 +359,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			vendorsGroup.POST("/profile", h.vendors.CreateProfile)
 			vendorsGroup.GET("/profile/me", h.vendors.GetMyProfile)
 			vendorsGroup.PATCH("/profile/me", h.vendors.UpdateMyProfile)
-			vendorsGroup.PATCH("/:id/status", h.vendors.UpdateProfileStatus)
+			vendorsGroup.PATCH("/:id/status", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.vendors.UpdateProfileStatus)
 
 			vendorsGroup.POST("/locations", h.vendors.CreateLocation)
 			vendorsGroup.GET("/locations/me", h.vendors.GetMyLocations)
@@ -367,8 +394,9 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			productsGroup.DELETE("/:id", h.products.ArchiveProduct)
 		}
 
-		// Categories routes (management operations)
+		// Categories routes (management operations, admin-only)
 		categoriesGroup := protected.Group("/categories")
+		categoriesGroup.Use(middleware.RequireRole("ADMIN", "SUPER_ADMIN"))
 		{
 			categoriesGroup.POST("", h.products.CreateCategory)
 			categoriesGroup.PATCH("/:id", h.products.UpdateCategory)
@@ -464,7 +492,7 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 			analyticsGroup.GET("/expenses", h.analytics.GetExpenses)
 			analyticsGroup.DELETE("/expenses/:id", h.analytics.DeleteExpense)
 			analyticsGroup.GET("/weather", h.analytics.GetWeather)
-			analyticsGroup.GET("/platform/overview", h.analytics.GetPlatformOverview)
+			analyticsGroup.GET("/platform/overview", middleware.RequireRole("ADMIN", "SUPER_ADMIN"), h.analytics.GetPlatformOverview)
 		}
 
 		// Reviews routes

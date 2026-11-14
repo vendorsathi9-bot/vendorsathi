@@ -54,6 +54,23 @@ class _VendorSaathiAppState extends State<VendorSaathiApp> {
       _currentLanguage = 'en';
       _hasChosenLanguage = false;
     }
+
+    // Restore securely persisted tokens and, when present, the signed-in user.
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    await _apiClient.restoreSession();
+    if (!_apiClient.hasSession) return;
+    try {
+      final res = await _apiClient.get('/me');
+      final userJson = res is Map<String, dynamic> ? res['user'] : null;
+      if (userJson is Map<String, dynamic> && mounted) {
+        _onLoginSuccess(UserModel.fromJson(userJson));
+      }
+    } catch (_) {
+      await _apiClient.clearSession();
+    }
   }
 
   void _onLanguageSelected(String langCode) {
@@ -89,7 +106,7 @@ class _VendorSaathiAppState extends State<VendorSaathiApp> {
   }
 
   void _onLogout() {
-    _apiClient.setToken(null);
+    _apiClient.clearSession();
     setState(() {
       _currentUser = null;
       _showRegister = false;

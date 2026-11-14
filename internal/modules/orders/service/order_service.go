@@ -337,6 +337,10 @@ func (s *OrderService) transitionOrder(ctx context.Context, orderID, actorID uui
 		return nil, err
 	}
 
+	if err := s.ensureVendorOwnsOrder(ctx, tx, order, actorID); err != nil {
+		return nil, err
+	}
+
 	if !isValidTransition(order.Status, toStatus) {
 		return nil, shared.NewInvalidTransition(string(order.Status), string(toStatus))
 	}
@@ -350,6 +354,39 @@ func (s *OrderService) transitionOrder(ctx context.Context, orderID, actorID uui
 	}
 
 	return s.orderRepo.GetOrderByID(ctx, orderID)
+}
+
+// ensureVendorOwnsOrder rejects a transition unless the actor owns the vendor
+// profile that received the order.
+func (s *OrderService) ensureVendorOwnsOrder(ctx context.Context, tx pgx.Tx, order *model.Order, userID uuid.UUID) error {
+	owns, err := s.orderRepo.VendorUserOwnsVendorTx(ctx, tx, order.VendorID, userID)
+	if err != nil {
+		return err
+	}
+	if !owns {
+		return shared.NewForbidden("manage this order")
+	}
+	return nil
+}
+
+// GetOrderForActor returns an order only when the actor is an administrator,
+// the customer who placed it, or the vendor who owns it.
+func (s *OrderService) GetOrderForActor(ctx context.Context, orderID, actorID uuid.UUID, isAdmin bool) (*model.OrderOutput, error) {
+	order, err := s.orderRepo.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	if isAdmin || order.CustomerID == actorID {
+		return order, nil
+	}
+	owns, err := s.orderRepo.VendorUserOwnsVendor(ctx, order.VendorID, actorID)
+	if err != nil {
+		return nil, err
+	}
+	if !owns {
+		return nil, shared.ErrForbidden
+	}
+	return order, nil
 }
 
 // AcceptOrder transitions PENDING → ACCEPTED.
@@ -367,6 +404,9 @@ func (s *OrderService) RejectOrder(ctx context.Context, orderID, vendorUserID uu
 
 	order, err := s.orderRepo.GetOrderForUpdate(ctx, tx, orderID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureVendorOwnsOrder(ctx, tx, order, vendorUserID); err != nil {
 		return nil, err
 	}
 	if !isValidTransition(order.Status, model.OrderStatusRejected) {
@@ -405,6 +445,9 @@ func (s *OrderService) MarkReadyForPickup(ctx context.Context, orderID, vendorUs
 	if err != nil {
 		return nil, err
 	}
+	if err := s.ensureVendorOwnsOrder(ctx, tx, order, vendorUserID); err != nil {
+		return nil, err
+	}
 	if order.FulfilmentType != model.FulfilmentTypePickup {
 		return nil, shared.NewAppError("INVALID_FULFILMENT", "ready-for-pickup only valid for PICKUP orders", shared.ErrInvalidTransition)
 	}
@@ -432,6 +475,9 @@ func (s *OrderService) MarkOutForDelivery(ctx context.Context, orderID, vendorUs
 	if err != nil {
 		return nil, err
 	}
+	if err := s.ensureVendorOwnsOrder(ctx, tx, order, vendorUserID); err != nil {
+		return nil, err
+	}
 	if order.FulfilmentType != model.FulfilmentTypeDelivery {
 		return nil, shared.NewAppError("INVALID_FULFILMENT", "out-for-delivery only valid for DELIVERY orders", shared.ErrInvalidTransition)
 	}
@@ -457,6 +503,9 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderID, vendorUserID 
 
 	order, err := s.orderRepo.GetOrderForUpdate(ctx, tx, orderID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureVendorOwnsOrder(ctx, tx, order, vendorUserID); err != nil {
 		return nil, err
 	}
 	if !isValidTransition(order.Status, model.OrderStatusCompleted) {
@@ -540,6 +589,9 @@ func (s *OrderService) DecideCancellation(ctx context.Context, orderID, vendorUs
 
 	order, err := s.orderRepo.GetOrderForUpdate(ctx, tx, orderID)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureVendorOwnsOrder(ctx, tx, order, vendorUserID); err != nil {
 		return nil, err
 	}
 	if order.Status != model.OrderStatusCancellationRequested {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"vendorsaathi/internal/modules/reviews/model"
 	"vendorsaathi/internal/shared"
@@ -33,9 +34,52 @@ func (r *ReviewRepository) CreateReview(ctx context.Context, customerID uuid.UUI
 		&review.Rating, &review.Comment, &review.IsHidden, &review.CreatedAt,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, shared.NewConflict("a review already exists for this order")
+		}
 		return nil, err
 	}
 	return &review, nil
+}
+
+// OrderReviewEligibility returns the vendor and status of an order owned by the
+// given customer. It is used to prevent reviews being attached to arbitrary
+// orders or to another vendor's order.
+func (r *ReviewRepository) OrderReviewEligibility(ctx context.Context, orderID, customerID uuid.UUID) (vendorID uuid.UUID, status string, err error) {
+	err = r.pool.QueryRow(ctx, `
+		SELECT vendor_id, status FROM orders WHERE id = $1 AND customer_id = $2
+	`, orderID, customerID).Scan(&vendorID, &status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, "", shared.ErrNotFound
+		}
+		return uuid.Nil, "", err
+	}
+	return vendorID, status, nil
+}
+
+// ReviewExistsForOrder reports whether the one-review-per-order constraint is
+// already satisfied.
+func (r *ReviewRepository) ReviewExistsForOrder(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM reviews WHERE order_id = $1)`, orderID).Scan(&exists)
+	return exists, err
+}
+
+// CustomerHasCompletedOrderWithVendor supports order-less reviews: a customer
+// may only review a vendor they have actually bought from.
+func (r *ReviewRepository) CustomerHasCompletedOrderWithVendor(ctx context.Context, customerID, vendorID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM orders
+			WHERE customer_id = $1 AND (vendor_id = $2 OR vendor_id IN (
+				SELECT id FROM vendor_profiles WHERE owner_user_id = $2
+			)) AND status = 'COMPLETED'
+		)
+	`, customerID, vendorID).Scan(&exists)
+	return exists, err
 }
 
 func (r *ReviewRepository) GetVendorReviews(ctx context.Context, vendorID uuid.UUID) (*model.VendorReviewSummary, error) {

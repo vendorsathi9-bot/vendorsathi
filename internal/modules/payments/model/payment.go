@@ -158,4 +158,3 @@ type VerifyGatewayPaymentInput struct {
 	GatewaySignature string    `json:"gateway_signature" binding:"required"`
 	OrderID          uuid.UUID `json:"order_id" binding:"required"`
 }
-

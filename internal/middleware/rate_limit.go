@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
@@ -49,7 +50,9 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.ClientIP()
 		if userID, exists := c.Get("user_id"); exists {
-			key = userID.(string)
+			if id, ok := userID.(string); ok && id != "" {
+				key = "user:" + id
+			}
 		}
 
 		rl.mu.Lock()
@@ -68,7 +71,7 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			if retryAfter < 1 {
 				retryAfter = 1
 			}
-			c.Header("Retry-After", string(rune(retryAfter)))
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
 			httpx.ErrorTooManyRequests(c, "rate limit exceeded")
 			c.Abort()
 			return

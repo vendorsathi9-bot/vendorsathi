@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
@@ -201,26 +202,33 @@ func (r *UserRepository) ListUsers(ctx context.Context, limit int, cursor string
 		FROM users
 	`
 	args := []interface{}{}
-	argIdx := 1
+	where := ""
 
 	if status != nil {
-		query += " WHERE status = $" + string(rune(argIdx+'0'))
 		args = append(args, *status)
-		argIdx++
+		where = fmt.Sprintf(" status = $%d", len(args))
 	}
-
-	query += " ORDER BY created_at DESC LIMIT $" + string(rune(argIdx+'0'))
-	args = append(args, limit+1)
-	argIdx++
 
 	if cursor != "" {
 		cursorID, err := uuid.Parse(cursor)
 		if err != nil {
 			return nil, "", false, err
 		}
-		query = query + " AND id < $" + string(rune(argIdx+'0'))
 		args = append(args, cursorID)
+		cond := fmt.Sprintf(" (created_at, id) < (SELECT created_at, id FROM users WHERE id = $%d)", len(args))
+		if where == "" {
+			where = cond
+		} else {
+			where += " AND" + cond
+		}
 	}
+
+	if where != "" {
+		query += " WHERE" + where
+	}
+
+	args = append(args, limit+1)
+	query += fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", len(args))
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {

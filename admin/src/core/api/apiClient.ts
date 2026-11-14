@@ -163,21 +163,72 @@ const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/
 
 export class ApiClient {
   private static token: string | null = localStorage.getItem('access_token');
+  private static refreshToken: string | null = localStorage.getItem('refresh_token');
+  private static refreshing: Promise<boolean> | null = null;
+
+  private static setTokens(accessToken: string, refreshToken?: string) {
+    this.token = accessToken;
+    localStorage.setItem('access_token', accessToken);
+    if (refreshToken) {
+      this.refreshToken = refreshToken;
+      localStorage.setItem('refresh_token', refreshToken);
+    }
+  }
 
   static setToken(token: string | null) {
     this.token = token;
     if (token) {
       localStorage.setItem('access_token', token);
     } else {
-      localStorage.removeItem('access_token');
+      this.clearTokens();
     }
+  }
+
+  static clearTokens() {
+    this.token = null;
+    this.refreshToken = null;
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
   }
 
   static getToken(): string | null {
     return this.token;
   }
 
-  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  /**
+   * Attempts a single refresh using the stored refresh token. Concurrent
+   * callers share the same in-flight promise so a burst of 401s does not
+   * rotate the token multiple times (which would revoke the session).
+   */
+  private static async refreshSession(): Promise<boolean> {
+    if (!this.refreshToken) return false;
+    if (this.refreshing) return this.refreshing;
+
+    this.refreshing = (async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: this.refreshToken }),
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (!data?.access_token) return false;
+        this.setTokens(data.access_token, data.refresh_token);
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+
+    try {
+      return await this.refreshing;
+    } finally {
+      this.refreshing = null;
+    }
+  }
+
+  private static async request<T>(endpoint: string, options: RequestInit = {}, retried = false): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -199,8 +250,12 @@ export class ApiClient {
       // A 401 from the login endpoint means invalid credentials, not an
       // expired session. Preserve the server message so the login form can
       // show "invalid credentials" instead of "session expired".
-      if (res.status === 401 && endpoint !== '/auth/login') {
-        this.setToken(null);
+      const isAuthEndpoint = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/refresh');
+      if (res.status === 401 && !isAuthEndpoint) {
+        if (!retried && (await this.refreshSession())) {
+          return this.request<T>(endpoint, options, true);
+        }
+        this.clearTokens();
         window.dispatchEvent(new Event('auth:unauthorized'));
         throw new Error('Session expired. Please log in again.');
       }
@@ -221,7 +276,7 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify({ phone, password }),
     });
-    this.setToken(data.access_token);
+    this.setTokens(data.access_token, data.refresh_token);
     return data;
   }
 
@@ -231,9 +286,16 @@ export class ApiClient {
 
   static async logout() {
     try {
-      await this.request('/auth/logout', { method: 'POST' });
+      const refreshToken = this.refreshToken;
+      await this.request('/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: refreshToken || '' }),
+      });
+    } catch {
+      // Best-effort: local credentials are cleared even if the server call
+      // fails (offline, already-expired token, etc.).
     } finally {
-      this.setToken(null);
+      this.clearTokens();
     }
   }
 

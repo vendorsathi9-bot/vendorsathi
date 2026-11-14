@@ -1,11 +1,15 @@
 package handler
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"vendorsaathi/internal/modules/reviews/model"
 	"vendorsaathi/internal/modules/reviews/service"
 	"vendorsaathi/internal/platform/httpx"
+	"vendorsaathi/internal/platform/logger"
+	"vendorsaathi/internal/shared"
 )
 
 type ReviewHandler struct {
@@ -49,7 +53,7 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 
 	output, err := h.service.CreateReview(c.Request.Context(), customerID, input)
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -67,7 +71,7 @@ func (h *ReviewHandler) GetVendorReviews(c *gin.Context) {
 
 	output, err := h.service.GetVendorReviews(c.Request.Context(), vendorID)
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -78,7 +82,7 @@ func (h *ReviewHandler) GetVendorReviews(c *gin.Context) {
 func (h *ReviewHandler) GetAllReviews(c *gin.Context) {
 	output, err := h.service.GetAllReviews(c.Request.Context())
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 	httpx.RespondOK(c, output)
@@ -100,7 +104,7 @@ func (h *ReviewHandler) ModerateReview(c *gin.Context) {
 	}
 
 	if err := h.service.ModerateReview(c.Request.Context(), reviewID, input.IsHidden); err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -117,9 +121,57 @@ func (h *ReviewHandler) GetMyLoyalty(c *gin.Context) {
 
 	output, err := h.service.GetLoyaltySummary(c.Request.Context(), customerID)
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
 	httpx.RespondOK(c, output)
+}
+
+func (h *ReviewHandler) handleError(c *gin.Context, err error) {
+	var appErr *shared.AppError
+	if errors.As(err, &appErr) {
+		switch appErr.Code {
+		case "NOT_FOUND":
+			httpx.ErrorNotFound(c, appErr.Message)
+			return
+		case "FORBIDDEN":
+			httpx.ErrorForbidden(c, appErr.Message)
+			return
+		case "CONFLICT", "REVIEW_NOT_ALLOWED":
+			httpx.ErrorConflict(c, appErr.Message, nil)
+			return
+		case "VALIDATION_ERROR":
+			var details []httpx.ErrorDetail
+			for field, reason := range appErr.Details {
+				details = append(details, httpx.ErrorDetail{Field: field, Reason: reason})
+			}
+			httpx.ErrorUnprocessable(c, appErr.Message, details)
+			return
+		}
+	}
+
+	if errors.Is(err, shared.ErrNotFound) {
+		httpx.ErrorNotFound(c, "resource not found")
+		return
+	}
+	if errors.Is(err, shared.ErrForbidden) {
+		httpx.ErrorForbidden(c, "access forbidden")
+		return
+	}
+	if errors.Is(err, shared.ErrConflict) {
+		httpx.ErrorConflict(c, "resource conflict", nil)
+		return
+	}
+	if errors.Is(err, shared.ErrValidationFailed) {
+		httpx.ErrorUnprocessable(c, "validation failed", nil)
+		return
+	}
+
+	logger.Logger.Error().
+		Err(err).
+		Str("request_id", c.GetString("request_id")).
+		Str("route", c.FullPath()).
+		Msg("review request failed")
+	httpx.ErrorInternal(c, "internal server error")
 }

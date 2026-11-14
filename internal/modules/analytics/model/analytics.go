@@ -31,14 +31,14 @@ type PlatformOverview struct {
 }
 
 type ProductProfitMargin struct {
-	ProductID        uuid.UUID `json:"product_id"`
-	Name             string    `json:"name"`
-	SellingPricePaise int64    `json:"selling_price_paise"`
-	CostPricePaise   int64     `json:"cost_price_paise"`
-	MarginPercent    float64   `json:"margin_percent"`
-	UnitsSold        int64     `json:"units_sold"`
-	RevenuePaise     int64     `json:"revenue_paise"`
-	ProfitPaise      int64     `json:"profit_paise"`
+	ProductID         uuid.UUID `json:"product_id"`
+	Name              string    `json:"name"`
+	SellingPricePaise int64     `json:"selling_price_paise"`
+	CostPricePaise    int64     `json:"cost_price_paise"`
+	MarginPercent     float64   `json:"margin_percent"`
+	UnitsSold         int64     `json:"units_sold"`
+	RevenuePaise      int64     `json:"revenue_paise"`
+	ProfitPaise       int64     `json:"profit_paise"`
 }
 
 type SalesTrendItem struct {
@@ -94,14 +94,14 @@ type DetailedVendorAnalytics struct {
 }
 
 type DemandForecastItem struct {
-	ProductID          uuid.UUID `json:"product_id"`
-	ProductName        string    `json:"product_name"`
-	CurrentStock       int64     `json:"current_stock"`
-	HistoricalDailyAvg float64   `json:"historical_daily_avg"`
-	Predicted7DayDemand int64    `json:"predicted_7day_demand"`
-	SuggestedRestockQty int64    `json:"suggested_restock_qty"`
-	Confidence         string    `json:"confidence"` // HIGH, MEDIUM, LOW
-	Explanation        string    `json:"explanation"`
+	ProductID           uuid.UUID `json:"product_id"`
+	ProductName         string    `json:"product_name"`
+	CurrentStock        int64     `json:"current_stock"`
+	HistoricalDailyAvg  float64   `json:"historical_daily_avg"`
+	Predicted7DayDemand int64     `json:"predicted_7day_demand"`
+	SuggestedRestockQty int64     `json:"suggested_restock_qty"`
+	Confidence          string    `json:"confidence"` // HIGH, MEDIUM, LOW
+	Explanation         string    `json:"explanation"`
 }
 
 type DemandForecastResponse struct {

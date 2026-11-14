@@ -123,6 +123,19 @@ func (s *ProductService) GetProductByID(ctx context.Context, id uuid.UUID) (*mod
 	return &output, nil
 }
 
+// CanViewCost reports whether the caller may see the vendor's cost price.
+// Cost/margin data is private commercial information and must not be exposed
+// to customers browsing the public catalog.
+func (s *ProductService) CanViewCost(ctx context.Context, vendorID, userID uuid.UUID, isAdmin bool) bool {
+	if isAdmin {
+		return true
+	}
+	if userID == uuid.Nil {
+		return false
+	}
+	return s.productRepo.ResolveVendorID(ctx, userID) == s.productRepo.ResolveVendorID(ctx, vendorID)
+}
+
 func (s *ProductService) GetMyProducts(ctx context.Context, vendorID uuid.UUID, limit int, cursor string, activeOnly bool) (*model.ProductListOutput, error) {
 	vendorID = s.productRepo.ResolveVendorID(ctx, vendorID)
 	products, nextCursor, hasMore, err := s.productRepo.GetProductsByVendorID(ctx, vendorID, limit, cursor, activeOnly)

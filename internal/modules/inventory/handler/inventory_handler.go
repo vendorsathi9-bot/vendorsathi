@@ -20,6 +20,17 @@ func NewInventoryHandler(inventoryService *service.InventoryService) *InventoryH
 }
 
 func (h *InventoryHandler) GetInventory(c *gin.Context) {
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		httpx.ErrorUnauthorized(c, "user not authenticated")
+		return
+	}
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		httpx.ErrorInternal(c, "invalid user id")
+		return
+	}
+
 	productIDStr := c.Param("productId")
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
@@ -27,7 +38,7 @@ func (h *InventoryHandler) GetInventory(c *gin.Context) {
 		return
 	}
 
-	output, err := h.inventoryService.GetInventory(c.Request.Context(), productID)
+	output, err := h.inventoryService.GetInventory(c.Request.Context(), productID, userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -268,6 +279,17 @@ func (h *InventoryHandler) FulfilStock(c *gin.Context) {
 }
 
 func (h *InventoryHandler) GetMovements(c *gin.Context) {
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		httpx.ErrorUnauthorized(c, "user not authenticated")
+		return
+	}
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		httpx.ErrorInternal(c, "invalid user id")
+		return
+	}
+
 	productIDStr := c.Param("productId")
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
@@ -281,7 +303,7 @@ func (h *InventoryHandler) GetMovements(c *gin.Context) {
 		return
 	}
 
-	output, err := h.inventoryService.GetMovements(c.Request.Context(), productID, params.Limit, params.Cursor)
+	output, err := h.inventoryService.GetMovements(c.Request.Context(), productID, userID, params.Limit, params.Cursor)
 	if err != nil {
 		h.handleError(c, err)
 		return

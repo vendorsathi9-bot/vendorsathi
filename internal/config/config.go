@@ -17,6 +17,7 @@ type Config struct {
 	JWT            JWTConfig       `mapstructure:"JWT"`
 	PasswordHash   PasswordConfig  `mapstructure:"PASSWORD_HASH"`
 	CORSOrigins    []string        `mapstructure:"CORS_ORIGINS"`
+	TrustedProxies []string        `mapstructure:"TRUSTED_PROXIES"`
 	FCM            FCMConfig       `mapstructure:"FCM"`
 	Map            MapConfig       `mapstructure:"MAP"`
 	Weather        WeatherConfig   `mapstructure:"WEATHER"`
@@ -125,12 +126,19 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("APP_ENV", "APP_ENV")
 	_ = v.BindEnv("HTTP_ADDR", "HTTP_ADDR")
 	_ = v.BindEnv("LOG_LEVEL", "LOG_LEVEL")
+	_ = v.BindEnv("CORS_ORIGINS", "CORS_ORIGINS")
+	_ = v.BindEnv("TRUSTED_PROXIES", "TRUSTED_PROXIES")
 	_ = v.BindEnv("REQUEST_TIMEOUT", "REQUEST_TIMEOUT")
 	_ = v.BindEnv("JWT.SIGNING_KEY", "JWT_SIGNING_KEY")
 	_ = v.BindEnv("JWT.ISSUER", "JWT_ISSUER")
 	_ = v.BindEnv("JWT.AUDIENCE", "JWT_AUDIENCE")
 	_ = v.BindEnv("JWT.ACCESS_TOKEN_TTL", "JWT_ACCESS_TOKEN_TTL")
 	_ = v.BindEnv("JWT.REFRESH_TOKEN_TTL", "JWT_REFRESH_TOKEN_TTL")
+	_ = v.BindEnv("PASSWORD_HASH.MEMORY", "PASSWORD_HASH_MEMORY")
+	_ = v.BindEnv("PASSWORD_HASH.ITERATIONS", "PASSWORD_HASH_ITERATIONS")
+	_ = v.BindEnv("PASSWORD_HASH.PARALLELISM", "PASSWORD_HASH_PARALLELISM")
+	_ = v.BindEnv("PASSWORD_HASH.SALT_LENGTH", "PASSWORD_HASH_SALT_LENGTH")
+	_ = v.BindEnv("PASSWORD_HASH.KEY_LENGTH", "PASSWORD_HASH_KEY_LENGTH")
 	_ = v.BindEnv("MIGRATION.PATH", "MIGRATION_PATH")
 	_ = v.BindEnv("MIGRATION.AUTO_APPLY", "MIGRATION_AUTO_APPLY")
 	_ = v.BindEnv("MAP.PROVIDER", "MAP_PROVIDER")
@@ -166,19 +174,13 @@ func Load() (*Config, error) {
 	// Viper does not parse JSON arrays automatically when the value comes from
 	// an environment variable, so we do it here.
 	if len(cfg.CORSOrigins) == 0 {
-		if raw := os.Getenv("CORS_ORIGINS"); raw != "" {
-			var origins []string
-			if err := json.Unmarshal([]byte(raw), &origins); err == nil {
-				cfg.CORSOrigins = origins
-			} else {
-				// Fallback: treat as a comma-separated list.
-				for _, o := range strings.Split(raw, ",") {
-					if trimmed := strings.TrimSpace(o); trimmed != "" {
-						cfg.CORSOrigins = append(cfg.CORSOrigins, trimmed)
-					}
-				}
-			}
-		}
+		cfg.CORSOrigins = parseStringListEnv("CORS_ORIGINS")
+	}
+
+	// TRUSTED_PROXIES accepts the same JSON-array or comma-separated format.
+	// When empty, Gin trusts no proxy headers and uses the socket peer address.
+	if len(cfg.TrustedProxies) == 0 {
+		cfg.TrustedProxies = parseStringListEnv("TRUSTED_PROXIES")
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -244,10 +246,56 @@ func (c *Config) Validate() error {
 	if c.JWT.RefreshTokenTTL <= 0 {
 		return fmt.Errorf("JWT_REFRESH_TOKEN_TTL must be a positive duration (e.g. 720h)")
 	}
-	if len(c.CORSOrigins) == 0 && c.AppEnv != "development" {
+	if c.JWT.RefreshTokenTTL <= c.JWT.AccessTokenTTL {
+		return fmt.Errorf("JWT_REFRESH_TOKEN_TTL must be greater than JWT_ACCESS_TOKEN_TTL")
+	}
+
+	// Weak/placeholder signing keys must never be accepted in a deployed
+	// environment: an attacker who knows the key can forge admin tokens.
+	if !c.IsDevelopment() {
+		if len(c.JWT.SigningKey) < 32 {
+			return fmt.Errorf("JWT_SIGNING_KEY must be at least 32 characters outside development")
+		}
+		lowerKey := strings.ToLower(c.JWT.SigningKey)
+		for _, placeholder := range []string{"change-me", "changeme", "your-super-secret", "your-secret", "placeholder", "example"} {
+			if strings.Contains(lowerKey, placeholder) {
+				return fmt.Errorf("JWT_SIGNING_KEY appears to be a placeholder; generate a random secret")
+			}
+		}
+	}
+
+	if c.PasswordHash.Memory == 0 || c.PasswordHash.Iterations == 0 ||
+		c.PasswordHash.Parallelism == 0 || c.PasswordHash.SaltLength < 8 || c.PasswordHash.KeyLength < 16 {
+		return fmt.Errorf("PASSWORD_HASH parameters are invalid (memory/iterations/parallelism must be > 0, salt >= 8, key >= 16)")
+	}
+
+	if len(c.CORSOrigins) == 0 && !c.IsDevelopment() {
 		return fmt.Errorf("CORS_ORIGINS must be set in non-development environments")
 	}
+	for _, origin := range c.CORSOrigins {
+		if origin == "*" && !c.IsDevelopment() {
+			return fmt.Errorf("CORS_ORIGINS must not contain '*' outside development; list explicit origins instead")
+		}
+	}
 	return nil
+}
+
+// parseStringListEnv accepts either a JSON array or a comma-separated list.
+func parseStringListEnv(name string) []string {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return nil
+	}
+	var values []string
+	if err := json.Unmarshal([]byte(raw), &values); err == nil {
+		return values
+	}
+	for _, v := range strings.Split(raw, ",") {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+	return values
 }
 
 func (c *Config) IsDevelopment() bool {

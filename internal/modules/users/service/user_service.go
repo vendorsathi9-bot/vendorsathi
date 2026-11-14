@@ -13,10 +13,15 @@ import (
 
 type UserService struct {
 	userRepo *repository.UserRepository
+	password auth.PasswordParams
 }
 
-func NewUserService(userRepo *repository.UserRepository) *UserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(userRepo *repository.UserRepository, passwordParams ...auth.PasswordParams) *UserService {
+	params := auth.DefaultPasswordParams()
+	if len(passwordParams) > 0 {
+		params = passwordParams[0]
+	}
+	return &UserService{userRepo: userRepo, password: params}
 }
 
 func (s *UserService) GetMe(ctx context.Context, userID uuid.UUID) (*model.UserOutput, error) {
@@ -121,12 +126,12 @@ func (s *UserService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 		return err
 	}
 
-	valid, err := auth.VerifyPassword(currentPassword, user.PasswordHash, 64*1024, 3, 4, 16, 32)
+	valid, _, err := auth.VerifyPasswordWithParams(currentPassword, user.PasswordHash, s.password)
 	if err != nil || !valid {
 		return shared.NewAppError("INVALID_PASSWORD", "current password is incorrect", shared.ErrUnauthorized)
 	}
 
-	newHash, err := auth.HashPassword(newPassword, 64*1024, 3, 4, 16, 32)
+	newHash, err := auth.HashPasswordPHC(newPassword, s.password)
 	if err != nil {
 		return err
 	}

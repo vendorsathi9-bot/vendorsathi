@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"net/http"
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +9,8 @@ import (
 	"vendorsaathi/internal/modules/analytics/model"
 	"vendorsaathi/internal/modules/analytics/service"
 	"vendorsaathi/internal/platform/httpx"
+	"vendorsaathi/internal/platform/logger"
+	"vendorsaathi/internal/shared"
 )
 
 type AnalyticsHandler struct {
@@ -46,7 +48,7 @@ func (h *AnalyticsHandler) GetVendorSummary(c *gin.Context) {
 
 	summary, err := h.service.GetVendorSummary(c.Request.Context(), vendorUserID)
 	if err != nil {
-		httpx.ErrorForbidden(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -63,7 +65,7 @@ func (h *AnalyticsHandler) GetDetailedVendorAnalytics(c *gin.Context) {
 
 	detailed, err := h.service.GetDetailedVendorAnalytics(c.Request.Context(), vendorUserID)
 	if err != nil {
-		httpx.ErrorForbidden(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -80,7 +82,7 @@ func (h *AnalyticsHandler) GetDemandForecast(c *gin.Context) {
 
 	forecast, err := h.service.GetDemandForecast(c.Request.Context(), vendorUserID)
 	if err != nil {
-		httpx.ErrorForbidden(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -103,7 +105,7 @@ func (h *AnalyticsHandler) CreateExpense(c *gin.Context) {
 
 	expense, err := h.service.CreateExpense(c.Request.Context(), vendorUserID, input)
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -120,7 +122,7 @@ func (h *AnalyticsHandler) GetExpenses(c *gin.Context) {
 
 	expenses, err := h.service.GetExpenses(c.Request.Context(), vendorUserID)
 	if err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -143,7 +145,7 @@ func (h *AnalyticsHandler) DeleteExpense(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteExpense(c.Request.Context(), vendorUserID, expenseID); err != nil {
-		httpx.ErrorInternal(c, err.Error())
+		h.handleError(c, err)
 		return
 	}
 
@@ -170,9 +172,32 @@ func (h *AnalyticsHandler) GetWeather(c *gin.Context) {
 func (h *AnalyticsHandler) GetPlatformOverview(c *gin.Context) {
 	overview, err := h.service.GetPlatformOverview(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.handleError(c, err)
 		return
 	}
 
 	httpx.RespondOK(c, overview)
+}
+
+// handleError maps domain errors to status codes and keeps internal database
+// details out of HTTP responses.
+func (h *AnalyticsHandler) handleError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, shared.ErrForbidden):
+		httpx.ErrorForbidden(c, "access forbidden")
+		return
+	case errors.Is(err, shared.ErrNotFound):
+		httpx.ErrorNotFound(c, "resource not found")
+		return
+	case errors.Is(err, shared.ErrValidationFailed):
+		httpx.ErrorUnprocessable(c, "validation failed", nil)
+		return
+	}
+
+	logger.Logger.Error().
+		Err(err).
+		Str("request_id", c.GetString("request_id")).
+		Str("route", c.FullPath()).
+		Msg("analytics request failed")
+	httpx.ErrorInternal(c, "internal server error")
 }

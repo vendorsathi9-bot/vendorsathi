@@ -48,6 +48,13 @@ type AuthService struct {
 	txManager    TxManager
 	jwtManager   *auth.JWTManager
 	clock        Clock
+	password     auth.PasswordParams
+}
+
+// passwordUpdater is implemented by the production user repository. It is
+// optional so existing test doubles keep compiling.
+type passwordUpdater interface {
+	UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
 }
 
 func NewAuthService(
@@ -56,13 +63,19 @@ func NewAuthService(
 	txManager TxManager,
 	jwtManager *auth.JWTManager,
 	clock Clock,
+	passwordParams ...auth.PasswordParams,
 ) *AuthService {
+	params := auth.DefaultPasswordParams()
+	if len(passwordParams) > 0 {
+		params = passwordParams[0]
+	}
 	return &AuthService{
 		userRepo:     userRepo,
 		customerRepo: customerRepo,
 		txManager:    txManager,
 		jwtManager:   jwtManager,
 		clock:        clock,
+		password:     params,
 	}
 }
 
@@ -95,8 +108,10 @@ func (s *AuthService) Register(ctx context.Context, input model.RegisterInput) (
 		}
 	}
 
-	// 2. Hash the password using the existing password hashing implementation.
-	passwordHash, err := auth.HashPassword(input.Password, 64*1024, 3, 4, 16, 32)
+	// 2. Hash the password with Argon2id using the configured cost parameters.
+	// Hashes are stored in the versioned PHC format so cost parameters can be
+	// raised later without invalidating existing accounts.
+	passwordHash, err := auth.HashPasswordPHC(input.Password, s.password)
 	if err != nil {
 		return nil, err
 	}
@@ -170,9 +185,21 @@ func (s *AuthService) Login(ctx context.Context, input model.LoginInput) (*model
 		return nil, err
 	}
 
-	valid, err := auth.VerifyPassword(input.Password, user.PasswordHash, 64*1024, 3, 4, 16, 32)
+	valid, needsRehash, err := auth.VerifyPasswordWithParams(input.Password, user.PasswordHash, s.password)
 	if err != nil || !valid {
+		// Do not reveal whether the phone number exists or the hash format is
+		// old; both cases are treated as invalid credentials.
 		return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
+	}
+
+	if needsRehash {
+		// Transparently upgrade legacy/unversioned hashes after a successful
+		// login. A failure here must not block authentication.
+		if newHash, hashErr := auth.HashPasswordPHC(input.Password, s.password); hashErr == nil {
+			if updater, ok := s.userRepo.(passwordUpdater); ok {
+				_ = updater.UpdatePassword(ctx, user.ID, newHash)
+			}
+		}
 	}
 
 	if user.Status != model.UserStatusActive {

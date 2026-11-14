@@ -9,6 +9,7 @@ import (
 	"vendorsaathi/internal/modules/orders/model"
 	"vendorsaathi/internal/modules/orders/service"
 	"vendorsaathi/internal/platform/httpx"
+	"vendorsaathi/internal/platform/logger"
 	"vendorsaathi/internal/shared"
 )
 
@@ -79,7 +80,7 @@ func (h *OrderHandler) Checkout(c *gin.Context) {
 
 // GetOrderByID GET /orders/:id
 func (h *OrderHandler) GetOrderByID(c *gin.Context) {
-	_, ok := getUserID(c)
+	actorID, ok := getUserID(c)
 	if !ok {
 		httpx.ErrorUnauthorized(c, "user not authenticated")
 		return
@@ -91,7 +92,8 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 		return
 	}
 
-	order, err := h.service.GetOrderByID(c.Request.Context(), id)
+	isAdmin := hasRole(c, "ADMIN") || hasRole(c, "SUPER_ADMIN")
+	order, err := h.service.GetOrderForActor(c.Request.Context(), id, actorID, isAdmin)
 	if err != nil {
 		handleOrderError(c, err)
 		return
@@ -373,7 +375,11 @@ func handleOrderError(c *gin.Context, err error) {
 		case errors.Is(appErr.Err, shared.ErrIdempotencyConflict):
 			httpx.ErrorConflict(c, appErr.Message, nil)
 		default:
-			httpx.ErrorInternal(c, appErr.Message)
+			logger.Logger.Error().
+				Err(appErr).
+				Str("request_id", c.GetString("request_id")).
+				Msg("unclassified order error")
+			httpx.ErrorInternal(c, "internal server error")
 		}
 		return
 	}
@@ -390,6 +396,15 @@ func handleOrderError(c *gin.Context, err error) {
 	case errors.Is(err, shared.ErrConflict):
 		httpx.ErrorConflict(c, err.Error(), nil)
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Internal details (SQL, driver errors) must never reach the client.
+		logger.Logger.Error().
+			Err(err).
+			Str("request_id", c.GetString("request_id")).
+			Str("route", c.FullPath()).
+			Msg("order request failed")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{
+			"code":    "INTERNAL_ERROR",
+			"message": "internal server error",
+		}})
 	}
 }

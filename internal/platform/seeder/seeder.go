@@ -128,15 +128,15 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 	vendorPass := "VendorPassword123!"
 	custPass := "CustomerPassword123!"
 
-	adminHash, err := auth.HashPassword(adminPass, 64*1024, 3, 4, 16, 32)
+	adminHash, err := auth.HashPasswordPHC(adminPass, auth.DefaultPasswordParams())
 	if err != nil {
 		return nil, fmt.Errorf("hash admin password: %w", err)
 	}
-	vendorHash, err := auth.HashPassword(vendorPass, 64*1024, 3, 4, 16, 32)
+	vendorHash, err := auth.HashPasswordPHC(vendorPass, auth.DefaultPasswordParams())
 	if err != nil {
 		return nil, fmt.Errorf("hash vendor password: %w", err)
 	}
-	custHash, err := auth.HashPassword(custPass, 64*1024, 3, 4, 16, 32)
+	custHash, err := auth.HashPasswordPHC(custPass, auth.DefaultPasswordParams())
 	if err != nil {
 		return nil, fmt.Errorf("hash customer password: %w", err)
 	}
@@ -746,9 +746,9 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 		{"prod:v1_potato", "vendor:1", "cat:fruits_veg", "Hassan Potato (ಆಲೂಗಡ್ಡೆ)", "Fresh earthy Hassan curry potatoes per kg", 3500, true, 100, 2},
 		{"prod:v1_apple", "vendor:1", "cat:fruits_veg", "Shimla Apple (ಸೇಬು)", "Crisp sweet red apples imported from Himachal per kg", 14000, true, 50, 1},
 		{"prod:v1_orange", "vendor:1", "cat:fruits_veg", "Nagpur Orange (ಕಿತ್ತಳೆ)", "Vitamin-C rich juicy sweet oranges per kg", 8000, true, 40, 1},
-		{"prod:v1_mango_low", "vendor:1", "cat:fruits_veg", "Badami Mango (ಬಾದಾಮಿ ಮಾವು)", "Alphonso/Badami table mangoes (Low stock scenario)", 22000, true, 5, 2}, // Low stock
+		{"prod:v1_mango_low", "vendor:1", "cat:fruits_veg", "Badami Mango (ಬಾದಾಮಿ ಮಾವು)", "Alphonso/Badami table mangoes (Low stock scenario)", 22000, true, 5, 2},             // Low stock
 		{"prod:v1_strawberry_out", "vendor:1", "cat:fruits_veg", "Mahabaleshwar Strawberry (ಸ್ಟ್ರಾಬೆರಿ)", "Fresh box strawberries (Out of stock scenario)", 12000, true, 0, 0}, // Out of stock
-		{"prod:v1_inactive_exotic", "vendor:1", "cat:fruits_veg", "Dragon Fruit (ಡ್ರ್ಯಾಗನ್ ಹಣ್ಣು)", "Exotic fruit (Inactive catalogue item)", 15000, false, 10, 0}, // Inactive product
+		{"prod:v1_inactive_exotic", "vendor:1", "cat:fruits_veg", "Dragon Fruit (ಡ್ರ್ಯಾಗನ್ ಹಣ್ಣು)", "Exotic fruit (Inactive catalogue item)", 15000, false, 10, 0},             // Inactive product
 
 		// Vendor 2 (Chickpet Sri Krishna Kirana)
 		{"prod:v2_sona_rice", "vendor:2", "cat:kirana", "Sona Masoori Raw Rice (ಸೋನಾ ಮಸೂರಿ ಅಕ್ಕಿ)", "1-year aged old rice per 5kg bag", 32000, true, 50, 0},
@@ -884,16 +884,19 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 	// 6. SEED REALISTIC ORDERS & STATE MACHINE TRANSITIONS
 	// -------------------------------------------------------------------------
 	ordersToSeed := []struct {
-		Key             string
-		CustKey         string
-		VendorKey       string
-		Fulfilment      string
-		Status          string
-		Subtotal        int64
-		Total           int64
-		DeliverySnap    string
-		PickupSnap      string
-		Items           []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }
+		Key          string
+		CustKey      string
+		VendorKey    string
+		Fulfilment   string
+		Status       string
+		Subtotal     int64
+		Total        int64
+		DeliverySnap string
+		PickupSnap   string
+		Items        []struct {
+			ProdKey, Name             string
+			UnitPrice, Qty, LineTotal int64
+		}
 		StatusHistory   []struct{ From, To, Reason string }
 		HasCancellation bool
 		CancelReason    string
@@ -906,7 +909,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "PICKUP", Status: "PENDING",
 			Subtotal: 14000, Total: 14000,
 			PickupSnap: `{"vendor_name": "Suresh Fresh Fruits", "address": "Stall 14, Majestic City Market"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v1_onion", "Bellary Onion (ಈರುಳ್ಳಿ)", 3500, 2, 7000},
 				{"prod:v1_potato", "Hassan Potato (ಆಲೂಗಡ್ಡೆ)", 3500, 2, 7000},
 			},
@@ -920,7 +926,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "DELIVERY", Status: "ACCEPTED",
 			Subtotal: 22000, Total: 22000,
 			DeliverySnap: `{"customer_name": "Priya Sharma", "address": "No 45, 7th Cross, Malleshwaram"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v1_apple", "Shimla Apple (ಸೇಬು)", 14000, 1, 14000},
 				{"prod:v1_orange", "Nagpur Orange (ಕಿತ್ತಳೆ)", 8000, 1, 8000},
 			},
@@ -935,7 +944,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "PICKUP", Status: "PREPARING",
 			Subtotal: 18000, Total: 18000,
 			PickupSnap: `{"vendor_name": "Suresh Fresh Fruits", "address": "Stall 14, Majestic City Market"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v1_banana", "Robusta Banana (ಬಾಳೆಹಣ್ಣು)", 4500, 4, 18000},
 			},
 			StatusHistory: []struct{ From, To, Reason string }{
@@ -950,7 +962,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "DELIVERY", Status: "PREPARING",
 			Subtotal: 35000, Total: 35000,
 			DeliverySnap: `{"customer_name": "Deepa Nair", "address": "56, 12th Main, Indiranagar"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v1_apple", "Shimla Apple (ಸೇಬು)", 14000, 2, 28000},
 				{"prod:v1_onion", "Bellary Onion (ಈರುಳ್ಳಿ)", 3500, 2, 7000},
 			},
@@ -966,7 +981,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "PICKUP", Status: "READY_FOR_PICKUP",
 			Subtotal: 16000, Total: 16000,
 			PickupSnap: `{"vendor_name": "Malleshwaram Nandi Dairy", "address": "34, 8th Cross, Sampige Road"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v4_milk", "Fresh Cow Milk (ಹಸುವಿನ ಹಾಲು)", 2500, 2, 5000},
 				{"prod:v4_paneer", "Malai Paneer Block (ಮಲೈ ಪನೀರ್)", 11000, 1, 11000},
 			},
@@ -983,7 +1001,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "DELIVERY", Status: "OUT_FOR_DELIVERY",
 			Subtotal: 45000, Total: 45000,
 			DeliverySnap: `{"customer_name": "Priya Sharma", "address": "No 45, 7th Cross, Malleshwaram"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v2_atta", "Chakki Fresh Wheat Atta (ಗೋಧಿ ಹಿಟ್ಟು)", 24500, 1, 24500},
 				{"prod:v2_toor_dal", "Gulbarga Toor Dal (ತೊಗರಿ ಬೇಳೆ)", 16000, 1, 16000},
 				{"prod:v2_sugar", "Refined White Sugar (ಸಕ್ಕರೆ)", 4500, 1, 4500},
@@ -1001,7 +1022,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "PICKUP", Status: "COMPLETED",
 			Subtotal: 30000, Total: 30000,
 			PickupSnap: `{"vendor_name": "Suresh Fresh Fruits", "address": "Stall 14, Majestic City Market"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v1_mango_low", "Badami Mango (ಬಾದಾಮಿ ಮಾವು)", 22000, 1, 22000},
 				{"prod:v1_orange", "Nagpur Orange (ಕಿತ್ತಳೆ)", 8000, 1, 8000},
 			},
@@ -1019,7 +1043,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "DELIVERY", Status: "COMPLETED",
 			Subtotal: 50000, Total: 50000,
 			DeliverySnap: `{"customer_name": "Anand Kumar", "address": "12, 1st Main, Gandhi Bazaar"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v2_sona_rice", "Sona Masoori Raw Rice (ಸೋನಾ ಮಸೂರಿ ಅಕ್ಕಿ)", 32000, 1, 32000},
 				{"prod:v2_toor_dal", "Gulbarga Toor Dal (ತೊಗರಿ ಬೇಳೆ)", 16000, 1, 16000},
 				{"prod:v2_sugar", "Refined White Sugar (ಸಕ್ಕರೆ)", 4500, 1, 4500},
@@ -1038,7 +1065,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "PICKUP", Status: "REJECTED",
 			Subtotal: 12000, Total: 12000,
 			PickupSnap: `{"vendor_name": "Suresh Fresh Fruits", "address": "Stall 14, Majestic City Market"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v1_strawberry_out", "Mahabaleshwar Strawberry (ಸ್ಟ್ರಾಬೆರಿ)", 12000, 1, 12000},
 			},
 			StatusHistory: []struct{ From, To, Reason string }{
@@ -1052,7 +1082,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "DELIVERY", Status: "CANCELLED",
 			Subtotal: 20000, Total: 20000,
 			DeliverySnap: `{"customer_name": "Mohammed Ali", "address": "24, Commercial Street"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v4_curd", "Thick Set Curd (ಗಟ್ಟಿ ಮೊಸರು)", 3500, 2, 7000},
 				{"prod:v4_paneer", "Malai Paneer Block (ಮಲೈ ಪನೀರ್)", 11000, 1, 11000},
 			},
@@ -1072,7 +1105,10 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config) (*SeedSum
 			Fulfilment: "PICKUP", Status: "CANCELLATION_REQUESTED",
 			Subtotal: 17500, Total: 17500,
 			PickupSnap: `{"vendor_name": "Chickpet Sri Krishna Kirana", "address": "88, O.T.C. Road"}`,
-			Items: []struct{ ProdKey, Name string; UnitPrice, Qty, LineTotal int64 }{
+			Items: []struct {
+				ProdKey, Name             string
+				UnitPrice, Qty, LineTotal int64
+			}{
 				{"prod:v2_sunflower_oil", "Sunflower Cooking Oil (ಸೂರ್ಯಕಾಂತಿ ಎಣ್ಣೆ)", 13500, 1, 13500},
 				{"prod:v2_sugar", "Refined White Sugar (ಸಕ್ಕರೆ)", 4000, 1, 4000},
 			},
