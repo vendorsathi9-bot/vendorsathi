@@ -27,7 +27,7 @@ const siteOrigin = readHttpUrl(import.meta.env.VITE_SITE_URL).replace(/\/$/, '')
 // Actual deployed VendorSaathi admin dashboard. Kept as the default so the
 // admin entry point still works when the optional env var is not configured.
 const deployedAdminDashboardUrl =
-  'https://vendorsathi-o9w010418-vendor8.vercel.app/';
+  'https://vendorsathiadmin.vercel.app/';
 
 // Verified from mobile/build/app/outputs/flutter-apk/app-release.apk
 // (package com.example.vendorsaathi_mobile, versionName 1.0.0, versionCode 1).
