@@ -74,8 +74,8 @@ export const CustomersPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>{t('userTitle')}</h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('userSubtitle')}</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F' }}>{t('userTitle')}</h1>
+          <p style={{ color: '#806B55', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('userSubtitle')}</p>
         </div>
         <button onClick={loadUsers} className="btn btn-secondary" disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -84,7 +84,7 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       {/* Role Filter Chips */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #EAE1D1', paddingBottom: '0.75rem' }}>
         {(['ALL', 'CUSTOMER', 'VENDOR', 'ADMIN'] as const).map(tab => {
           const count = tab === 'ALL' ? users.length : users.filter(u => u.roles?.includes(tab)).length;
           const active = roleFilter === tab;
@@ -100,15 +100,15 @@ export const CustomersPage: React.FC = () => {
                 borderRadius: '0.375rem',
                 fontSize: '0.85rem',
                 fontWeight: active ? 600 : 500,
-                backgroundColor: active ? '#2563eb' : '#f1f5f9',
-                color: active ? '#ffffff' : '#475569',
+                backgroundColor: active ? '#F4B400' : '#FEF4CD',
+                color: active ? '#38200F' : '#806B55',
                 transition: 'all 0.15s ease-in-out',
               }}
             >
               <Filter size={13} />
               {tab === 'ALL' ? t('filterAll') : tab === 'CUSTOMER' ? 'Customers' : tab === 'VENDOR' ? 'Vendors' : 'Admins'}
               <span style={{
-                background: active ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                background: active ? 'rgba(56,32,15,0.14)' : '#EAE1D1',
                 padding: '0.1rem 0.4rem',
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
@@ -135,14 +135,14 @@ export const CustomersPage: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: '#806B55' }}>
                   <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
                   {t('loading')}
                 </td>
               </tr>
             ) : filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '3.5rem', color: '#64748b' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '3.5rem', color: '#806B55' }}>
                   <Users size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.4, display: 'block' }} />
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>No users match this filter.</div>
                 </td>
@@ -151,8 +151,8 @@ export const CustomersPage: React.FC = () => {
               filteredUsers.map(u => (
                 <tr key={u.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{u.phone}</div>
-                    <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#64748b' }}>ID: {u.id.substring(0, 8)}...</div>
+                    <div style={{ fontWeight: 600, color: '#38200F' }}>{u.phone}</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#806B55' }}>ID: {u.id.substring(0, 8)}...</div>
                   </td>
                   <td>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
@@ -161,8 +161,8 @@ export const CustomersPage: React.FC = () => {
                           key={r} 
                           className="badge" 
                           style={{ 
-                            background: r === 'ADMIN' ? '#fef3c7' : r === 'VENDOR' ? '#eff6ff' : '#f0fdf4',
-                            color: r === 'ADMIN' ? '#92400e' : r === 'VENDOR' ? '#1e40af' : '#166534',
+                            background: r === 'ADMIN' ? '#fef3c7' : r === 'VENDOR' ? '#FEF4CD' : '#EAF6EE',
+                            color: r === 'ADMIN' ? '#92400e' : r === 'VENDOR' ? '#1e40af' : '#2F7D4F',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.25rem',
@@ -186,7 +186,7 @@ export const CustomersPage: React.FC = () => {
                           <select
                             value={selectedRole}
                             onChange={(e) => setSelectedRole(e.target.value as any)}
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
+                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', borderRadius: '0.25rem', border: '1px solid #EAE1D1' }}
                           >
                             <option value="VENDOR">VENDOR</option>
                             <option value="CUSTOMER">CUSTOMER</option>
@@ -215,9 +215,9 @@ export const CustomersPage: React.FC = () => {
                             alignItems: 'center',
                             gap: '0.2rem',
                             fontSize: '0.75rem',
-                            color: '#2563eb',
+                            color: '#38200F',
                             padding: '0.2rem 0.4rem',
-                            background: '#eff6ff',
+                            background: '#FEF4CD',
                             borderRadius: '0.25rem',
                             fontWeight: 500,
                           }}
@@ -232,7 +232,7 @@ export const CustomersPage: React.FC = () => {
                       {u.status}
                     </span>
                   </td>
-                  <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                  <td style={{ color: '#806B55', fontSize: '0.85rem' }}>
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ textAlign: 'right' }}>

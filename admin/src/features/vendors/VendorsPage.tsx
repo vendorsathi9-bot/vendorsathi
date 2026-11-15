@@ -77,8 +77,8 @@ export const VendorsPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>{t('vendorTitle')}</h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('vendorSubtitle')}</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F' }}>{t('vendorTitle')}</h1>
+          <p style={{ color: '#806B55', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('vendorSubtitle')}</p>
         </div>
         <button onClick={loadVendors} className="btn btn-secondary" disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -87,7 +87,7 @@ export const VendorsPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #EAE1D1', paddingBottom: '0.75rem' }}>
         {(['ALL', 'PENDING', 'ACTIVE', 'SUSPENDED'] as const).map(tab => {
           const count = tab === 'ALL' ? vendors.length : vendors.filter(v => v.status === tab).length;
           const active = filter === tab;
@@ -103,15 +103,15 @@ export const VendorsPage: React.FC = () => {
                 borderRadius: '0.375rem',
                 fontSize: '0.85rem',
                 fontWeight: active ? 600 : 500,
-                backgroundColor: active ? '#2563eb' : '#f1f5f9',
-                color: active ? '#ffffff' : '#475569',
+                backgroundColor: active ? '#F4B400' : '#FEF4CD',
+                color: active ? '#38200F' : '#806B55',
                 transition: 'all 0.15s ease-in-out',
               }}
             >
               <Filter size={13} />
               {tab === 'ALL' ? t('filterAll') : tab === 'PENDING' ? t('filterPending') : tab === 'ACTIVE' ? t('filterActive') : t('filterSuspended')}
               <span style={{
-                background: active ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                background: active ? 'rgba(56,32,15,0.14)' : '#EAE1D1',
                 padding: '0.1rem 0.4rem',
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
@@ -140,14 +140,14 @@ export const VendorsPage: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: '#806B55' }}>
                   <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
                   {t('loading')}
                 </td>
               </tr>
             ) : filteredVendors.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '3.5rem', color: '#64748b' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '3.5rem', color: '#806B55' }}>
                   <Store size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.4, display: 'block' }} />
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('noVendorsFound')}</div>
                 </td>
@@ -156,33 +156,33 @@ export const VendorsPage: React.FC = () => {
               filteredVendors.map(v => (
                 <tr key={v.id}>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{v.business_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>ID: {v.id.substring(0, 8)}...</div>
+                    <div style={{ fontWeight: 600, color: '#38200F' }}>{v.business_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#806B55', fontFamily: 'monospace' }}>ID: {v.id.substring(0, 8)}...</div>
                   </td>
                   <td style={{ fontWeight: 500 }}>{v.phone}</td>
                   <td>
                     {v.city || v.address_line1 ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', color: '#475569' }}>
-                        <MapPin size={13} color="#2563eb" />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem', color: '#806B55' }}>
+                        <MapPin size={13} color="#38200F" />
                         {v.city ? `${v.city}${v.address_line1 ? `, ${v.address_line1}` : ''}` : v.address_line1}
                       </span>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Not configured</span>
+                      <span style={{ color: '#8B735E', fontSize: '0.8rem' }}>Not configured</span>
                     )}
                   </td>
                   <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>
-                      <Package size={14} color="#64748b" />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', fontWeight: 600, color: '#38200F' }}>
+                      <Package size={14} color="#806B55" />
                       {v.product_count}
                     </span>
                   </td>
                   <td>
                     {getStatusBadge(v.status)}
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.15rem' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#8B735E', marginTop: '0.15rem' }}>
                       Shop: {v.availability_status}
                     </div>
                   </td>
-                  <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                  <td style={{ color: '#806B55', fontSize: '0.85rem' }}>
                     {new Date(v.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ textAlign: 'right' }}>

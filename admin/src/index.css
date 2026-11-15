@@ -10,9 +10,14 @@
 }
 
 body {
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #FFFCEF;
+  color: #38200F;
   min-height: 100vh;
+}
+
+::selection {
+  background-color: rgba(244, 180, 0, 0.35);
+  color: #38200F;
 }
 
 button {
@@ -26,12 +31,17 @@ input, select, textarea {
   font-family: inherit;
 }
 
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid rgba(244, 180, 0, 0.45);
+  outline-offset: 1px;
+}
+
 .table-container {
   width: 100%;
   overflow-x: auto;
   border-radius: 0.5rem;
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #EAE1D1;
 }
 
 table {
@@ -42,20 +52,20 @@ table {
 }
 
 th {
-  background-color: #f8fafc;
+  background-color: #FEF4CD;
   padding: 0.75rem 1rem;
   font-weight: 600;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+  color: #806B55;
+  border-bottom: 1px solid #EAE1D1;
 }
 
 td {
   padding: 0.875rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #EAE1D1;
 }
 
 tr:hover td {
-  background-color: #f8fafc;
+  background-color: #FFFCEF;
 }
 
 .badge {
@@ -67,11 +77,11 @@ tr:hover td {
   font-weight: 600;
 }
 
-.badge-success { background-color: #dcfce7; color: #166534; }
+.badge-success { background-color: #EAF6EE; color: #2F7D4F; }
 .badge-warning { background-color: #fef9c3; color: #854d0e; }
 .badge-danger { background-color: #fee2e2; color: #991b1b; }
 .badge-info { background-color: #e0f2fe; color: #075985; }
-.badge-neutral { background-color: #f1f5f9; color: #475569; }
+.badge-neutral { background-color: #FEF4CD; color: #806B55; }
 
 .btn {
   display: inline-flex;
@@ -85,20 +95,20 @@ tr:hover td {
 }
 
 .btn-primary {
-  background-color: #2563eb;
-  color: white;
+  background-color: #F4B400;
+  color: #38200F;
 }
 .btn-primary:hover {
-  background-color: #1d4ed8;
+  background-color: #DCA000;
 }
 
 .btn-secondary {
   background-color: white;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+  color: #38200F;
+  border: 1px solid #EAE1D1;
 }
 .btn-secondary:hover {
-  background-color: #f1f5f9;
+  background-color: #FFFCEF;
 }
 
 .btn-danger {
@@ -111,8 +121,8 @@ tr:hover td {
 
 .card {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #EAE1D1;
   border-radius: 0.75rem;
   padding: 1.25rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(56, 32, 15, 0.04), 0 18px 44px -28px rgba(56, 32, 15, 0.32);
 }

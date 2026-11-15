@@ -26,8 +26,8 @@ export const AuditLogsPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>Platform Audit Trail</h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>Immutable ledger of privileged actions, status modifications, and admin overrides.</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F' }}>Platform Audit Trail</h1>
+          <p style={{ color: '#806B55', fontSize: '0.9rem', marginTop: '0.25rem' }}>Immutable ledger of privileged actions, status modifications, and admin overrides.</p>
         </div>
         <button onClick={loadAuditLogs} className="btn btn-secondary">Refresh</button>
       </div>
@@ -48,7 +48,7 @@ export const AuditLogsPage: React.FC = () => {
               <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>Loading audit logs...</td></tr>
             ) : logs.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: '#806B55' }}>
                   <Shield size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
                   <div>No audit records found.</div>
                 </td>
@@ -56,17 +56,17 @@ export const AuditLogsPage: React.FC = () => {
             ) : (
               logs.map(log => (
                 <tr key={log.id}>
-                  <td style={{ whiteSpace: 'nowrap', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <td style={{ whiteSpace: 'nowrap', color: '#806B55', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <Clock size={14} /> {new Date(log.created_at).toLocaleString()}
                   </td>
                   <td>
                     <span className="badge badge-info">{log.action}</span>
                   </td>
                   <td style={{ fontWeight: 500 }}>{log.resource_type}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#64748b' }}>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#806B55' }}>
                     {log.actor_user_id ? log.actor_user_id.substring(0, 8) + '...' : 'SYSTEM'}
                   </td>
-                  <td style={{ color: '#475569' }}>{log.reason || '—'}</td>
+                  <td style={{ color: '#806B55' }}>{log.reason || '—'}</td>
                 </tr>
               ))
             )}

@@ -28,7 +28,7 @@ export const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#806B55' }}>
         Verifying admin session...
       </div>
     );
@@ -53,8 +53,8 @@ export const App: React.FC = () => {
       {/* Sidebar */}
       <aside style={{
         width: '260px',
-        backgroundColor: '#0f172a',
-        color: 'white',
+        backgroundColor: '#38200F',
+        color: '#FFFCEF',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
@@ -65,20 +65,20 @@ export const App: React.FC = () => {
         transition: 'transform 0.2s',
       }}>
         {/* Brand */}
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,252,239,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ padding: '0.5rem', background: '#2563eb', borderRadius: '0.5rem' }}>
-              <ShieldCheck size={22} color="white" />
+            <div style={{ padding: '0.5rem', background: '#F4B400', borderRadius: '0.5rem' }}>
+              <ShieldCheck size={22} color="#38200F" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '-0.025em' }}>{t('brandTitle')}</div>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('brandSub')}</div>
+              <div style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '-0.025em', color: '#FFFCEF' }}>{t('brandTitle')}</div>
+              <div style={{ fontSize: '0.7rem', color: '#C9B49E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('brandSub')}</div>
             </div>
           </div>
         </div>
 
         {/* Language switch button */}
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #1e293b' }}>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,252,239,0.12)' }}>
           <button
             onClick={toggleLanguage}
             style={{
@@ -88,8 +88,8 @@ export const App: React.FC = () => {
               justifyContent: 'center',
               gap: '0.5rem',
               padding: '0.45rem',
-              backgroundColor: '#1e293b',
-              color: '#38bdf8',
+              backgroundColor: 'rgba(255,252,239,0.08)',
+              color: '#F4B400',
               borderRadius: '0.375rem',
               fontSize: '0.8rem',
               fontWeight: 600,
@@ -118,8 +118,8 @@ export const App: React.FC = () => {
                   gap: '0.75rem',
                   padding: '0.75rem 1rem',
                   borderRadius: '0.5rem',
-                  color: active ? '#ffffff' : '#94a3b8',
-                  backgroundColor: active ? '#1e293b' : 'transparent',
+                  color: active ? '#FFFCEF' : '#D9C7B2',
+                  backgroundColor: active ? 'rgba(244,180,0,0.16)' : 'transparent',
                   fontWeight: active ? 600 : 500,
                   fontSize: '0.9rem',
                   width: '100%',
@@ -127,7 +127,7 @@ export const App: React.FC = () => {
                   transition: 'background-color 0.15s, color 0.15s',
                 }}
               >
-                <Icon size={18} color={active ? '#3b82f6' : '#94a3b8'} />
+                <Icon size={18} color={active ? '#F4B400' : '#C9B49E'} />
                 {item.label}
               </button>
             );
@@ -135,19 +135,19 @@ export const App: React.FC = () => {
         </nav>
 
         {/* User Info & Logout */}
-        <div style={{ padding: '1.25rem', borderTop: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '1.25rem', borderTop: '1px solid rgba(255,252,239,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ overflow: 'hidden' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#FFFCEF', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
               {user.phone}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+            <div style={{ fontSize: '0.75rem', color: '#B9A48F' }}>
               {user.roles.join(', ')}
             </div>
           </div>
           <button
             onClick={logout}
             title={t('logout')}
-            style={{ padding: '0.5rem', borderRadius: '0.375rem', color: '#94a3b8', background: '#1e293b' }}
+            style={{ padding: '0.5rem', borderRadius: '0.375rem', color: '#D9C7B2', background: 'rgba(255,252,239,0.08)' }}
           >
             <LogOut size={16} />
           </button>

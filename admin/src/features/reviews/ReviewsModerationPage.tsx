@@ -62,8 +62,8 @@ export const ReviewsModerationPage: React.FC = () => {
           <Star
             key={star}
             size={14}
-            color={star <= rating ? '#eab308' : '#cbd5e1'}
-            fill={star <= rating ? '#eab308' : 'none'}
+            color={star <= rating ? '#F4B400' : '#EAE1D1'}
+            fill={star <= rating ? '#F4B400' : 'none'}
           />
         ))}
         <span style={{ marginLeft: '0.35rem', fontWeight: 600, fontSize: '0.85rem' }}>{rating}/5</span>
@@ -75,8 +75,8 @@ export const ReviewsModerationPage: React.FC = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>{t('reviewTitle')}</h1>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('reviewSubtitle')}</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F' }}>{t('reviewTitle')}</h1>
+          <p style={{ color: '#806B55', fontSize: '0.9rem', marginTop: '0.25rem' }}>{t('reviewSubtitle')}</p>
         </div>
         <button onClick={loadReviews} className="btn btn-secondary" disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -85,7 +85,7 @@ export const ReviewsModerationPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #EAE1D1', paddingBottom: '0.75rem' }}>
         {(['ALL', 'VISIBLE', 'HIDDEN'] as const).map(tab => {
           const count = tab === 'ALL' 
             ? reviews.length 
@@ -105,15 +105,15 @@ export const ReviewsModerationPage: React.FC = () => {
                 borderRadius: '0.375rem',
                 fontSize: '0.85rem',
                 fontWeight: active ? 600 : 500,
-                backgroundColor: active ? '#2563eb' : '#f1f5f9',
-                color: active ? '#ffffff' : '#475569',
+                backgroundColor: active ? '#F4B400' : '#FEF4CD',
+                color: active ? '#38200F' : '#806B55',
                 transition: 'all 0.15s ease-in-out',
               }}
             >
               <Filter size={13} />
               {tab === 'ALL' ? t('filterAll') : tab === 'VISIBLE' ? t('visible') : t('hidden')}
               <span style={{
-                background: active ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                background: active ? 'rgba(56,32,15,0.14)' : '#EAE1D1',
                 padding: '0.1rem 0.4rem',
                 borderRadius: '9999px',
                 fontSize: '0.75rem',
@@ -141,14 +141,14 @@ export const ReviewsModerationPage: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#806B55' }}>
                   <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
                   {t('loading')}
                 </td>
               </tr>
             ) : filteredReviews.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '3.5rem', color: '#64748b' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '3.5rem', color: '#806B55' }}>
                   <MessageSquare size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.4, display: 'block' }} />
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t('noReviewsFound')}</div>
                 </td>
@@ -158,16 +158,16 @@ export const ReviewsModerationPage: React.FC = () => {
                 <tr key={r.id}>
                   <td>{renderStars(r.rating)}</td>
                   <td style={{ maxWidth: '320px' }}>
-                    <div style={{ color: '#0f172a', fontWeight: 500, fontStyle: r.comment ? 'normal' : 'italic' }}>
+                    <div style={{ color: '#38200F', fontWeight: 500, fontStyle: r.comment ? 'normal' : 'italic' }}>
                       {r.comment ? `"${r.comment}"` : 'No written comment'}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#806B55', marginTop: '0.2rem', fontFamily: 'monospace' }}>
                       Order: #{r.order_id.substring(0, 8)}... | Vendor: #{r.vendor_id.substring(0, 8)}...
                     </div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{r.customer_name || 'Customer'}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
+                    <div style={{ fontWeight: 600, color: '#38200F' }}>{r.customer_name || 'Customer'}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#806B55', fontFamily: 'monospace' }}>
                       #{r.customer_id.substring(0, 8)}...
                     </div>
                   </td>
@@ -182,7 +182,7 @@ export const ReviewsModerationPage: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                  <td style={{ color: '#806B55', fontSize: '0.85rem' }}>
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ textAlign: 'right' }}>

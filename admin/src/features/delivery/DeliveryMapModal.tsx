@@ -249,7 +249,7 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.75)',
+      backgroundColor: 'rgba(56, 32, 15, 0.68)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -265,31 +265,31 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 24px 60px -28px rgba(56,32,15,0.45)',
       }}>
         {/* Header */}
         <div style={{
           padding: '1.25rem 1.5rem',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid #EAE1D1',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: '#f8fafc',
+          backgroundColor: '#FFFCEF',
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Navigation size={20} color="#2563eb" />
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              <Navigation size={20} color="#38200F" />
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#38200F', margin: 0 }}>
                 Live Delivery Route & MapLibre Tracking
               </h2>
             </div>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#806B55' }}>
               Order #{assignment.order_id.slice(0, 8)} • OpenStreetMap & OSRM Road Routing
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {loading && (
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Updating...</span>
+              <span style={{ fontSize: '0.75rem', color: '#806B55' }}>Updating...</span>
             )}
             <button
               onClick={loadData}
@@ -297,13 +297,13 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
               disabled={loading}
               style={{
                 backgroundColor: 'white',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #EAE1D1',
                 borderRadius: '0.375rem',
                 padding: '0.5rem',
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              <RefreshCw size={16} color={loading ? '#2563eb' : '#64748b'} />
+              <RefreshCw size={16} color={loading ? '#DCA000' : '#806B55'} />
             </button>
             <button
               onClick={onClose}
@@ -313,7 +313,7 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
                 cursor: 'pointer',
                 padding: '0.5rem',
                 borderRadius: '0.375rem',
-                color: '#64748b',
+                color: '#806B55',
               }}
             >
               <X size={20} />
@@ -324,8 +324,8 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
         {/* Route Stats Bar */}
         <div style={{
           padding: '0.75rem 1.5rem',
-          backgroundColor: '#eff6ff',
-          borderBottom: '1px solid #bfdbfe',
+          backgroundColor: '#FEF4CD',
+          borderBottom: '1px solid #EAE1D1',
           display: 'flex',
           flexWrap: 'wrap',
           gap: '1.5rem',
@@ -333,9 +333,9 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
           alignItems: 'center',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Navigation size={16} color="#2563eb" />
-            <span style={{ color: '#1e40af' }}>Distance:</span>
-            <strong style={{ color: '#1e3a8a' }}>
+            <Navigation size={16} color="#38200F" />
+            <span style={{ color: '#806B55' }}>Distance:</span>
+            <strong style={{ color: '#38200F' }}>
               {routeLoading ? (
                 'Calculating...'
               ) : routeData?.routing_available ? (
@@ -348,9 +348,9 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
             </strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Clock size={16} color="#2563eb" />
-            <span style={{ color: '#1e40af' }}>Estimated Duration:</span>
-            <strong style={{ color: '#1e3a8a' }}>
+            <Clock size={16} color="#38200F" />
+            <span style={{ color: '#806B55' }}>Estimated Duration:</span>
+            <strong style={{ color: '#38200F' }}>
               {routeLoading ? (
                 'Calculating...'
               ) : routeData?.routing_available ? (
@@ -366,10 +366,10 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
               width: 8,
               height: 8,
               borderRadius: '50%',
-              backgroundColor: agentLoc ? '#16a34a' : '#f59e0b',
+              backgroundColor: agentLoc ? '#2F7D4F' : '#f59e0b',
             }} />
-            <span style={{ color: '#1e40af' }}>Agent Status:</span>
-            <strong style={{ color: '#1e3a8a' }}>
+            <span style={{ color: '#806B55' }}>Agent Status:</span>
+            <strong style={{ color: '#38200F' }}>
               {agentLoc ? `Live GPS (Updated ${new Date(agentLoc.updated_at).toLocaleTimeString()})` : 'Waiting for GPS ping'}
             </strong>
           </div>
@@ -393,7 +393,7 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
         )}
 
         {/* MapLibre Map Container */}
-        <div style={{ position: 'relative', flex: 1, minHeight: '440px', backgroundColor: '#e2e8f0' }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: '440px', backgroundColor: '#EAE1D1' }}>
           <div ref={mapContainerRef} style={{ width: '100%', height: '100%', minHeight: '440px' }} />
 
           {/* Map Attribution overlay */}
@@ -405,7 +405,7 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
             padding: '2px 8px',
             borderRadius: '4px',
             fontSize: '10px',
-            color: '#475569',
+            color: '#806B55',
             pointerEvents: 'none',
             zIndex: 10,
           }}>
@@ -416,15 +416,15 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
         {/* Footer with Waypoint Info & OSM Link */}
         <div style={{
           padding: '1rem 1.5rem',
-          borderTop: '1px solid #e2e8f0',
+          borderTop: '1px solid #EAE1D1',
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: '#f8fafc',
+          backgroundColor: '#FFFCEF',
           gap: '0.75rem',
         }}>
-          <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.8rem', color: '#475569' }}>
+          <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.8rem', color: '#806B55' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ea580c' }} />
               <strong>Pickup:</strong> {assignment.vendor_name || 'Vendor'}
@@ -451,11 +451,11 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
                 alignItems: 'center',
                 gap: '0.35rem',
                 fontSize: '0.8rem',
-                color: '#2563eb',
+                color: '#38200F',
                 textDecoration: 'none',
                 padding: '0.4rem 0.75rem',
                 borderRadius: '0.375rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #EAE1D1',
                 backgroundColor: 'white',
                 fontWeight: 600,
               }}
@@ -467,8 +467,8 @@ export const DeliveryMapModal: React.FC<DeliveryMapModalProps> = ({ assignment, 
               onClick={onClose}
               style={{
                 padding: '0.4rem 1rem',
-                backgroundColor: '#0f172a',
-                color: 'white',
+                backgroundColor: '#38200F',
+                color: '#FFFCEF',
                 border: 'none',
                 borderRadius: '0.375rem',
                 fontSize: '0.8rem',

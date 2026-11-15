@@ -101,7 +101,7 @@ export const DeliveryAgentsPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'DELIVERED':
-        return <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.25rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>Delivered</span>;
+        return <span style={{ backgroundColor: '#EAF6EE', color: '#2F7D4F', padding: '0.25rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>Delivered</span>;
       case 'OUT_FOR_DELIVERY':
         return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '0.25rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>Out for Delivery</span>;
       case 'PICKED_UP':
@@ -109,7 +109,7 @@ export const DeliveryAgentsPage: React.FC = () => {
       case 'ACCEPTED':
         return <span style={{ backgroundColor: '#f3e8ff', color: '#6b21a8', padding: '0.25rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>Accepted</span>;
       default:
-        return <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '0.25rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>Assigned</span>;
+        return <span style={{ backgroundColor: '#FEF4CD', color: '#806B55', padding: '0.25rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 600 }}>Assigned</span>;
     }
   };
 
@@ -118,8 +118,8 @@ export const DeliveryAgentsPage: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Delivery & Agent Management</h1>
-          <p style={{ color: '#64748b', marginTop: '0.25rem', marginBottom: 0 }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F', margin: 0 }}>Delivery & Agent Management</h1>
+          <p style={{ color: '#806B55', marginTop: '0.25rem', marginBottom: 0 }}>
             Assign delivery agents to orders, monitor active delivery assignments, and track live GPS locations.
           </p>
         </div>
@@ -130,9 +130,9 @@ export const DeliveryAgentsPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #cbd5e1',
-              color: '#334155',
+              backgroundColor: '#FFFCEF',
+              border: '1px solid #EAE1D1',
+              color: '#38200F',
               padding: '0.625rem 1rem',
               borderRadius: '0.5rem',
               fontWeight: 600,
@@ -149,8 +149,8 @@ export const DeliveryAgentsPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              backgroundColor: '#2563eb',
-              color: 'white',
+              backgroundColor: '#F4B400',
+              color: '#38200F',
               border: 'none',
               padding: '0.625rem 1rem',
               borderRadius: '0.5rem',
@@ -169,13 +169,13 @@ export const DeliveryAgentsPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               backgroundColor: 'white',
-              border: '1px solid #cbd5e1',
+              border: '1px solid #EAE1D1',
               padding: '0.625rem',
               borderRadius: '0.5rem',
               cursor: 'pointer',
             }}
           >
-            <RefreshCw size={16} color="#64748b" />
+            <RefreshCw size={16} color="#806B55" />
           </button>
         </div>
       </div>
@@ -189,70 +189,70 @@ export const DeliveryAgentsPage: React.FC = () => {
 
       {/* Agents Overview Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-        <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.25rem', border: '1px solid #EAE1D1', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 18px 44px -28px rgba(56,32,15,0.32)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>Active Delivery Agents</span>
-            <div style={{ padding: '0.5rem', backgroundColor: '#eff6ff', borderRadius: '0.5rem', color: '#2563eb' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#806B55' }}>Active Delivery Agents</span>
+            <div style={{ padding: '0.5rem', backgroundColor: '#FEF4CD', borderRadius: '0.5rem', color: '#38200F' }}>
               <Truck size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F', marginTop: '0.5rem' }}>
             {agents.length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', color: '#8B735E', marginTop: '0.25rem' }}>
             Registered personnel with DELIVERY_AGENT role
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.25rem', border: '1px solid #EAE1D1', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 18px 44px -28px rgba(56,32,15,0.32)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>Active Deliveries</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#806B55' }}>Active Deliveries</span>
             <div style={{ padding: '0.5rem', backgroundColor: '#fef3c7', borderRadius: '0.5rem', color: '#d97706' }}>
               <Clock size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F', marginTop: '0.5rem' }}>
             {assignments.filter(a => a.status !== 'DELIVERED').length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', color: '#8B735E', marginTop: '0.25rem' }}>
             In progress across Bangalore & Karnataka
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.25rem', border: '1px solid #EAE1D1', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 18px 44px -28px rgba(56,32,15,0.32)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>Completed Deliveries</span>
-            <div style={{ padding: '0.5rem', backgroundColor: '#f0fdf4', borderRadius: '0.5rem', color: '#16a34a' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#806B55' }}>Completed Deliveries</span>
+            <div style={{ padding: '0.5rem', backgroundColor: '#EAF6EE', borderRadius: '0.5rem', color: '#2F7D4F' }}>
               <CheckCircle2 size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38200F', marginTop: '0.5rem' }}>
             {assignments.filter(a => a.status === 'DELIVERED').length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', color: '#8B735E', marginTop: '0.25rem' }}>
             Successfully fulfilled
           </div>
         </div>
       </div>
 
       {/* Delivery Assignments Table */}
-      <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ padding: '1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Delivery Assignments</h2>
-          <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{assignments.length} total assignments</span>
+      <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', border: '1px solid #EAE1D1', overflow: 'hidden', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 18px 44px -28px rgba(56,32,15,0.32)' }}>
+        <div style={{ padding: '1.25rem', borderBottom: '1px solid #EAE1D1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#38200F', margin: 0 }}>Delivery Assignments</h2>
+          <span style={{ fontSize: '0.875rem', color: '#806B55' }}>{assignments.length} total assignments</span>
         </div>
 
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>Loading assignments...</div>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#806B55' }}>Loading assignments...</div>
         ) : assignments.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#806B55' }}>
             No delivery assignments recorded yet. Click "Assign Agent to Order" above to dispatch a delivery.
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                <tr style={{ backgroundColor: '#FEF4CD', borderBottom: '1px solid #EAE1D1', color: '#806B55' }}>
                   <th style={{ padding: '0.75rem 1rem' }}>Order / ID</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Customer & Destination</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Vendor</th>
@@ -269,30 +269,30 @@ export const DeliveryAgentsPage: React.FC = () => {
 
                   return (
                     <React.Fragment key={a.id}>
-                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr style={{ borderBottom: '1px solid #EAE1D1' }}>
                         <td style={{ padding: '1rem', verticalAlign: 'top' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', backgroundColor: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '0.25rem', color: '#0f172a' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', backgroundColor: '#FEF4CD', padding: '0.2rem 0.4rem', borderRadius: '0.25rem', color: '#38200F' }}>
                             {a.order_id.slice(0, 8)}...
                           </span>
                         </td>
                         <td style={{ padding: '1rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{a.customer_name || 'Customer'}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{a.customer_phone}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
+                          <div style={{ fontWeight: 600, color: '#38200F' }}>{a.customer_name || 'Customer'}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#806B55' }}>{a.customer_phone}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#806B55', marginTop: '0.25rem' }}>
                             {a.delivery_address_line1} {a.delivery_city ? `, ${a.delivery_city}` : ''}
                           </div>
                         </td>
                         <td style={{ padding: '1rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{a.vendor_name || 'Vendor'}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{a.vendor_phone}</div>
+                          <div style={{ fontWeight: 600, color: '#38200F' }}>{a.vendor_name || 'Vendor'}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#806B55' }}>{a.vendor_phone}</div>
                         </td>
                         <td style={{ padding: '1rem', verticalAlign: 'top' }}>
                           {getStatusBadge(a.status)}
                         </td>
-                        <td style={{ padding: '1rem', verticalAlign: 'top', fontWeight: 600, color: '#0f172a' }}>
+                        <td style={{ padding: '1rem', verticalAlign: 'top', fontWeight: 600, color: '#38200F' }}>
                           ₹{((a.order_total_paise || 0) / 100).toFixed(2)}
                         </td>
-                        <td style={{ padding: '1rem', verticalAlign: 'top', color: '#64748b', fontSize: '0.75rem' }}>
+                        <td style={{ padding: '1rem', verticalAlign: 'top', color: '#806B55', fontSize: '0.75rem' }}>
                           {new Date(a.assigned_at).toLocaleString()}
                         </td>
                         <td style={{ padding: '1rem', verticalAlign: 'top', textAlign: 'right' }}>
@@ -304,9 +304,9 @@ export const DeliveryAgentsPage: React.FC = () => {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '0.35rem',
-                                backgroundColor: '#2563eb',
+                                backgroundColor: '#F4B400',
                                 border: 'none',
-                                color: 'white',
+                                color: '#38200F',
                                 padding: '0.35rem 0.65rem',
                                 borderRadius: '0.375rem',
                                 fontSize: '0.75rem',
@@ -325,9 +325,9 @@ export const DeliveryAgentsPage: React.FC = () => {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '0.35rem',
-                                backgroundColor: '#f8fafc',
-                                border: '1px solid #cbd5e1',
-                                color: '#475569',
+                                backgroundColor: '#FFFCEF',
+                                border: '1px solid #EAE1D1',
+                                color: '#806B55',
                                 padding: '0.35rem 0.65rem',
                                 borderRadius: '0.375rem',
                                 fontSize: '0.75rem',
@@ -342,13 +342,13 @@ export const DeliveryAgentsPage: React.FC = () => {
                         </td>
                       </tr>
                       {loc && (
-                        <tr style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #dcfce7' }}>
-                          <td colSpan={7} style={{ padding: '0.75rem 1.25rem', fontSize: '0.8rem', color: '#166534' }}>
+                        <tr style={{ backgroundColor: '#EAF6EE', borderBottom: '1px solid #EAF6EE' }}>
+                          <td colSpan={7} style={{ padding: '0.75rem 1.25rem', fontSize: '0.8rem', color: '#2F7D4F' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <MapPin size={16} color="#16a34a" />
+                                <MapPin size={16} color="#2F7D4F" />
                                 <strong>Live Agent Location:</strong> Lat {loc.latitude.toFixed(5)}, Lng {loc.longitude.toFixed(5)}
-                                <span style={{ color: '#65a30d', marginLeft: '0.5rem' }}>
+                                <span style={{ color: '#2F7D4F', marginLeft: '0.5rem' }}>
                                   (Updated: {new Date(loc.updated_at).toLocaleTimeString()})
                                 </span>
                               </div>
@@ -356,8 +356,8 @@ export const DeliveryAgentsPage: React.FC = () => {
                                 <button
                                   onClick={() => setSelectedAssignmentForMap(a)}
                                   style={{
-                                    backgroundColor: '#16a34a',
-                                    color: 'white',
+                                    backgroundColor: '#F4B400',
+                                    color: '#38200F',
                                     border: 'none',
                                     padding: '0.25rem 0.6rem',
                                     borderRadius: '0.25rem',
@@ -372,7 +372,7 @@ export const DeliveryAgentsPage: React.FC = () => {
                                   href={`https://www.openstreetmap.org/?mlat=${loc.latitude}&mlon=${loc.longitude}#map=16/${loc.latitude}/${loc.longitude}`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: 600 }}
+                                  style={{ color: '#38200F', textDecoration: 'underline', fontWeight: 600 }}
                                 >
                                   View on OpenStreetMap ↗
                                 </a>
@@ -395,19 +395,19 @@ export const DeliveryAgentsPage: React.FC = () => {
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
+          backgroundColor: 'rgba(56,32,15,0.68)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.75rem', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.75rem', width: '100%', maxWidth: '480px', border: '1px solid #EAE1D1', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 24px 60px -28px rgba(56,32,15,0.45)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#38200F' }}>
               Assign Delivery Agent to Order
             </h3>
             <form onSubmit={handleAssignAgent}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#38200F', marginBottom: '0.25rem' }}>
                   Order UUID
                 </label>
                 <input
@@ -416,12 +416,12 @@ export const DeliveryAgentsPage: React.FC = () => {
                   value={selectedOrderId}
                   onChange={e => setSelectedOrderId(e.target.value)}
                   required
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #EAE1D1', borderRadius: '0.375rem', fontSize: '0.875rem' }}
                 />
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#38200F', marginBottom: '0.25rem' }}>
                   Select Delivery Agent
                 </label>
                 {agents.length === 0 ? (
@@ -433,7 +433,7 @@ export const DeliveryAgentsPage: React.FC = () => {
                     value={selectedAgentId}
                     onChange={e => setSelectedAgentId(e.target.value)}
                     required
-                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem', backgroundColor: 'white' }}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #EAE1D1', borderRadius: '0.375rem', fontSize: '0.875rem', backgroundColor: 'white' }}
                   >
                     <option value="">-- Choose Agent --</option>
                     {agents.map(ag => (
@@ -449,14 +449,14 @@ export const DeliveryAgentsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', backgroundColor: 'white', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid #EAE1D1', backgroundColor: '#FFFCEF', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 500 }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={assignLoading || agents.length === 0}
-                  style={{ padding: '0.5rem 1rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.5rem 1rem', backgroundColor: '#F4B400', color: '#38200F', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 600 }}
                 >
                   {assignLoading ? 'Assigning...' : 'Assign Agent'}
                 </button>
@@ -471,29 +471,29 @@ export const DeliveryAgentsPage: React.FC = () => {
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
+          backgroundColor: 'rgba(56,32,15,0.68)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.75rem', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.75rem', width: '100%', maxWidth: '480px', border: '1px solid #EAE1D1', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 24px 60px -28px rgba(56,32,15,0.45)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#38200F' }}>
               Promote User to Delivery Agent
             </h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
-              Assigns the <code style={{ backgroundColor: '#f1f5f9', padding: '0.1rem 0.3rem', borderRadius: '0.2rem' }}>DELIVERY_AGENT</code> role to a registered user.
+            <p style={{ fontSize: '0.85rem', color: '#806B55', marginBottom: '1.25rem' }}>
+              Assigns the <code style={{ backgroundColor: '#FEF4CD', padding: '0.1rem 0.3rem', borderRadius: '0.2rem' }}>DELIVERY_AGENT</code> role to a registered user.
             </p>
             <form onSubmit={handleAddAgentRole}>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#38200F', marginBottom: '0.25rem' }}>
                   Select User
                 </label>
                 <select
                   value={selectedUserId}
                   onChange={e => setSelectedUserId(e.target.value)}
                   required
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.375rem', fontSize: '0.875rem', backgroundColor: 'white' }}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #EAE1D1', borderRadius: '0.375rem', fontSize: '0.875rem', backgroundColor: 'white' }}
                 >
                   <option value="">-- Choose User --</option>
                   {allUsers.map(u => (
@@ -508,14 +508,14 @@ export const DeliveryAgentsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddAgentModal(false)}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', backgroundColor: 'white', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid #EAE1D1', backgroundColor: '#FFFCEF', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 500 }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={addAgentLoading}
-                  style={{ padding: '0.5rem 1rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.5rem 1rem', backgroundColor: '#F4B400', color: '#38200F', border: 'none', borderRadius: '0.375rem', cursor: 'pointer', fontWeight: 600 }}
                 >
                   {addAgentLoading ? 'Promoting...' : 'Promote User'}
                 </button>

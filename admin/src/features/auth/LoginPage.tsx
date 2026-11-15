@@ -25,8 +25,8 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', padding: '1rem' }}>
-      <div style={{ maxWidth: '420px', width: '100%', background: 'white', borderRadius: '1rem', padding: '2.5rem', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFCEF', padding: '1rem' }}>
+      <div style={{ maxWidth: '420px', width: '100%', background: 'white', borderRadius: '1rem', padding: '2.5rem', border: '1px solid #EAE1D1', boxShadow: '0 1px 2px rgba(56,32,15,0.04), 0 18px 44px -28px rgba(56,32,15,0.32)', position: 'relative' }}>
         {/* Language switcher */}
         <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem' }}>
           <button
@@ -41,13 +41,13 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', marginBottom: '1rem' }}>
+          <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '50%', background: '#F4B400', color: '#38200F', marginBottom: '1rem', boxShadow: 'inset 0 -2px 0 rgba(56,32,15,0.16)' }}>
             <ShieldCheck size={36} />
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#38200F' }}>
             {language === 'kn' ? 'ವೆಂಡರ್‌ಸಾಥಿ ಅಡ್ಮಿನ್' : 'VendorSaathi Admin'}
           </h1>
-          <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.25rem' }}>
+          <p style={{ fontSize: '0.875rem', color: '#806B55', marginTop: '0.25rem' }}>
             {language === 'kn' ? 'ಆಡಳಿತ ಮತ್ತು ಕಾರ್ಯಾಚರಣೆ ಪೋರ್ಟಲ್' : 'Management & Operational Portal'}
           </p>
         </div>
@@ -60,11 +60,11 @@ export const LoginPage: React.FC = () => {
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '0.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#38200F', marginBottom: '0.5rem' }}>
               {language === 'kn' ? 'ದೂರವಾಣಿ ಸಂಖ್ಯೆ' : 'Phone Number'}
             </label>
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+              <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#8B735E' }}>
                 <Phone size={18} />
               </div>
               <input
@@ -74,17 +74,17 @@ export const LoginPage: React.FC = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+919876543210"
-                style={{ width: '100%', padding: '0.625rem 0.75rem 0.625rem 2.25rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.625rem 0.75rem 0.625rem 2.25rem', border: '1px solid #EAE1D1', borderRadius: '0.5rem', fontSize: '0.875rem' }}
               />
             </div>
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#334155', marginBottom: '0.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#38200F', marginBottom: '0.5rem' }}>
               {language === 'kn' ? 'ಪಾಸ್‌ವರ್ಡ್' : 'Password'}
             </label>
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+              <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#8B735E' }}>
                 <Lock size={18} />
               </div>
               <input
@@ -94,7 +94,7 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                style={{ width: '100%', padding: '0.625rem 0.75rem 0.625rem 2.25rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.625rem 0.75rem 0.625rem 2.25rem', border: '1px solid #EAE1D1', borderRadius: '0.5rem', fontSize: '0.875rem' }}
               />
             </div>
           </div>
@@ -111,7 +111,7 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        <p style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+        <p style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.75rem', color: '#806B55' }}>
           {language === 'kn'
             ? 'ನಿಮ್ಮ ನಿರ್ವಾಹಕ ಫೋನ್ ಸಂಖ್ಯೆ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ಬಳಸಿ'
             : 'Use your administrator phone number and password'}
