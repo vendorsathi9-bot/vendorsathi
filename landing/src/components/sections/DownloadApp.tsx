@@ -1,7 +1,6 @@
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowRight,
-  Clock,
   Download,
   Smartphone,
   Star,
@@ -17,6 +16,8 @@ import { PhoneFrame } from '../ui/PhoneFrame';
 import { Reveal } from '../ui/Reveal';
 
 export function DownloadApp() {
+  const releaseMeta = `Version ${siteConfig.appVersion} · ${siteConfig.apkSize} · Android APK`;
+
   return (
     <section
       id="download"
@@ -57,16 +58,22 @@ export function DownloadApp() {
 
                 {hasAppDownload ? (
                   <div className="mt-7 flex flex-col gap-5 sm:flex-row sm:items-center">
-                    <Button
-                      href={siteConfig.appDownloadUrl}
-                      external
-                      variant="dark"
-                      size="lg"
-                      icon={<Download className="h-[18px] w-[18px]" />}
-                      iconRight={<ArrowRight className="h-[18px] w-[18px]" />}
-                    >
-                      Download for Android
-                    </Button>
+                    <div>
+                      <Button
+                        href={siteConfig.appDownloadUrl}
+                        download
+                        variant="dark"
+                        size="lg"
+                        icon={<Download className="h-[18px] w-[18px]" />}
+                        iconRight={<ArrowRight className="h-[18px] w-[18px]" />}
+                        ariaLabel="Download VendorSaathi for Android"
+                      >
+                        Download for Android
+                      </Button>
+                      <p className="mt-2 text-[0.72rem] font-medium tracking-[0.01em] text-brand-espresso/65">
+                        {releaseMeta}
+                      </p>
+                    </div>
 
                     <div className="flex items-center gap-3 rounded-2xl border border-brand-espresso/10 bg-brand-cream p-3">
                       <div className="rounded-xl bg-brand-white p-1.5">
@@ -87,22 +94,27 @@ export function DownloadApp() {
                   </div>
                 ) : (
                   <div className="mt-7">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-brand-espresso px-4 py-2 text-xs font-semibold text-brand-cream">
-                      <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                      Coming soon
-                    </span>
-                    <p className="mt-3 max-w-md text-sm leading-relaxed text-brand-espresso/70">
-                      The public Android release is being prepared. Download
-                      details will appear here as soon as the app is available.
-                    </p>
                     <Button
-                      href="#customers"
+                      disabled
                       variant="dark"
-                      className="mt-5"
-                      iconRight={<ArrowRight className="h-[17px] w-[17px]" />}
+                      size="lg"
+                      icon={<Download className="h-[18px] w-[18px]" />}
+                      iconRight={<ArrowRight className="h-[18px] w-[18px]" />}
+                      ariaLabel="VendorSaathi Android download link is not configured yet"
                     >
-                      Explore the experience
+                      Download for Android
                     </Button>
+                    <p className="mt-2 text-[0.72rem] font-medium tracking-[0.01em] text-brand-espresso/65">
+                      {releaseMeta}
+                    </p>
+                    <p
+                      id="download-availability"
+                      className="mt-3 max-w-md text-sm leading-relaxed text-brand-espresso/70"
+                    >
+                      The Android download link is being finalised. This button
+                      will download the release APK as soon as the production
+                      asset URL is configured.
+                    </p>
                   </div>
                 )}
               </div>

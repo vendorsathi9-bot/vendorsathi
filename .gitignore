@@ -30,6 +30,11 @@ mobile/android/app/debug/
 mobile/android/app/profile/
 mobile/android/app/release/
 
+# Android signing secrets — never commit these
+mobile/android/key.properties
+*.jks
+*.keystore
+
 # System and IDE
 .DS_Store
 .idea/
@@ -43,3 +48,11 @@ mobile/android/app/release/
 .env
 .env.local
 .env.*.local
+backups/
+
+# Private deployment and security reports
+LOGIN_401_DIAGNOSTIC.md
+PRE_DEPLOYMENT_SECURITY_REVIEW.md
+
+# Local database backups
+backups/

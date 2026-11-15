@@ -8,3 +8,10 @@ dist-ssr
 .DS_Store
 .vite
 .playwright-cli
+
+# Private internal security and diagnostic reports
+LOGIN_401_DIAGNOSTIC.md
+PRE_DEPLOYMENT_SECURITY_REVIEW.md
+
+# Private database backups
+backups/

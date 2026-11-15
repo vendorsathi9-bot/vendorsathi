@@ -37,6 +37,7 @@ interface ButtonProps {
   type?: 'button' | 'submit';
   disabled?: boolean;
   external?: boolean;
+  download?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
   className?: string;
@@ -52,6 +53,7 @@ export function Button({
   type = 'button',
   disabled = false,
   external = false,
+  download = false,
   variant = 'primary',
   size = 'md',
   className,
@@ -92,6 +94,7 @@ export function Button({
         onClick={onClick}
         className={classes}
         aria-label={ariaLabel}
+        {...(download ? { download: '' } : {})}
         {...(external
           ? { target: '_blank', rel: 'noopener noreferrer' }
           : {})}

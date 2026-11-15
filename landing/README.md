@@ -44,13 +44,30 @@ variables are exposed to the browser — never add secrets here.
 
 | Variable                   | Required | Purpose                                                                                                 |
 | -------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
-| `VITE_APP_DOWNLOAD_URL`    | No       | Public Android download URL. When empty, the download section shows a **Coming soon** state, no QR code. |
-| `VITE_ADMIN_DASHBOARD_URL` | No       | Public admin dashboard URL. When empty, the admin section shows an operator-access note instead of a link. |
+| `VITE_ANDROID_APK_URL`     | Yes\*    | Public Android APK download URL (GitHub Release asset). When empty, the download CTA is visible but disabled. |
+| `VITE_APP_DOWNLOAD_URL`    | No       | Backwards-compatible alias for the APK URL; `VITE_ANDROID_APK_URL` takes precedence.                     |
+| `VITE_APP_VERSION`         | No       | Android release version shown beside the download button. Defaults to the verified `1.0.0` build.         |
+| `VITE_APK_SIZE`            | No       | Android APK size shown beside the download button. Defaults to the verified `85.9 MB` build.             |
+| `VITE_ADMIN_DASHBOARD_URL` | No       | Public admin dashboard URL. Defaults to the deployed Vercel dashboard.                                   |
 | `VITE_CONTACT_EMAIL`       | No       | Optional public contact address. When empty, contact placeholders are shown instead of invented details. |
 | `VITE_SITE_URL`            | No       | Optional canonical origin used for absolute Open Graph/canonical URLs, e.g. `https://vendorsaathi.com`. |
 
+\* Required for a working download. Until the APK is published as a GitHub Release
+asset, leave it blank — do not substitute a fabricated or unrelated URL.
+
 Invalid or non-`http(s)` URLs are ignored, so a bad value falls back to the honest
-empty state rather than rendering a broken link.
+empty/disabled state rather than rendering a broken link.
+
+## Publishing the Android APK
+
+1. Build the production APK from `mobile/` (already signed with the permanent
+   release keystore).
+2. Create a GitHub Release in `vendorsathi9-bot/vendorsathi` and attach
+   `app-release.apk`.
+3. Copy the release asset URL into `VITE_ANDROID_APK_URL` in Vercel (and in a
+   local `.env` when testing).
+4. Update `VITE_APP_VERSION` / `VITE_APK_SIZE` if the build metadata changed,
+   then redeploy the landing site.
 
 ## Deploying to Vercel
 

@@ -4,10 +4,11 @@ import {
   useScroll,
   useSpring,
 } from 'framer-motion';
-import { Download, Menu, X } from 'lucide-react';
+import { Download, LogIn, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { NAV_LINKS, SECTION_IDS } from '../../content/site';
+import { hasAdminDashboard, siteConfig } from '../../lib/config';
 import { cn } from '../../lib/cn';
 import { Button } from '../ui/Button';
 import { Logo } from '../ui/Logo';
@@ -124,6 +125,17 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {hasAdminDashboard ? (
+            <a
+              href={siteConfig.adminDashboardUrl}
+              aria-label="Admin Login — open the VendorSaathi admin dashboard"
+              title="Admin Login"
+              className="hidden items-center gap-1.5 rounded-full px-2.5 py-2 text-[0.82rem] font-medium text-brand-brown transition-colors duration-200 hover:bg-brand-espresso/5 hover:text-brand-espresso focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-espresso focus-visible:ring-offset-4 focus-visible:ring-offset-brand-cream lg:inline-flex xl:px-3.5"
+            >
+              <LogIn className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden xl:inline">Admin Login</span>
+            </a>
+          ) : null}
           <Button
             href="#download"
             size="sm"
@@ -181,6 +193,16 @@ export function Navbar() {
                 </li>
               ))}
             </ul>
+            {hasAdminDashboard ? (
+              <a
+                href={siteConfig.adminDashboardUrl}
+                onClick={() => setMenuOpen(false)}
+                className="mt-3 flex items-center gap-2 rounded-2xl px-3 py-3.5 text-base font-medium text-brand-brown transition-colors hover:bg-brand-espresso/5 hover:text-brand-espresso"
+              >
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                Admin Login
+              </a>
+            ) : null}
             <Button
               href="#download"
               className="mt-4 w-full"
