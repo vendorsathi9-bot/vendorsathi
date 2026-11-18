@@ -56,3 +56,6 @@ PRE_DEPLOYMENT_SECURITY_REVIEW.md
 
 # Local database backups
 backups/
+
+# Generated reports
+CART_QUANTITY_500_FIX_REPORT.md

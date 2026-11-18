@@ -287,9 +287,9 @@ class _CustomerCheckoutSheetState extends State<CustomerCheckoutSheet> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.mintSoft,
+                color: AppColors.accentSoft,
                 borderRadius: AppRadii.roundedMd,
-                border: Border.all(color: AppColors.mint),
+                border: Border.all(color: AppColors.border),
               ),
               child: CheckboxListTile(
                 value: _redeemLoyalty,

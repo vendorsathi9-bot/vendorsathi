@@ -131,7 +131,7 @@ func New(cfg *config.Config) (*Application, error) {
 	authUserRepo := authrepository.NewUserRepository(dbPool)
 	customersCustomerRepo := customersrepository.NewCustomerRepository(dbPool)
 	txManager := database.NewTxManager(dbPool)
-	authService := authservice.NewAuthService(authUserRepo, customersCustomerRepo, txManager, jwtManager, &database.RealClock{}, auth.PasswordParams{
+	authService := authservice.NewAuthService(authUserRepo, customersCustomerRepo, txManager, jwtManager, &database.RealClock{}, dbPool, auth.PasswordParams{
 		Memory:      cfg.PasswordHash.Memory,
 		Iterations:  cfg.PasswordHash.Iterations,
 		Parallelism: cfg.PasswordHash.Parallelism,
@@ -166,7 +166,7 @@ func New(cfg *config.Config) (*Application, error) {
 	inventoryHandler := inventoryHandler.NewInventoryHandler(inventoryService)
 
 	cartsRepo := cartsrepository.NewCartRepository(dbPool)
-	cartsService := cartsservice.NewCartService(cartsRepo, productsProductRepo)
+	cartsService := cartsservice.NewCartService(cartsRepo, productsProductRepo, inventoryInventoryRepo)
 	cartsHandler := cartshandler.NewCartHandler(cartsService)
 
 	ordersRepo := ordersrepository.NewOrderRepository(dbPool)
@@ -321,8 +321,12 @@ func setupRouter(cfg *config.Config, jwtManager *auth.JWTManager, h Handlers, db
 	}
 
 	// Auth routes. Credential endpoints are rate limited per client IP to slow
-	// down password guessing and registration abuse.
-	authLimiter := middleware.NewRateLimiter(10, time.Minute)
+	// down password guessing and registration abuse, with configurable burst allowance.
+	authLimiter := middleware.NewRateLimiterWithBurst(
+		cfg.RateLimit.AuthRequestsPerMinute,
+		cfg.RateLimit.AuthBurst,
+		cfg.RateLimit.Window,
+	)
 	authGroup := router.Group("/api/v1/auth")
 	{
 		authGroup.POST("/register", authLimiter.Middleware(), h.auth.Register)

@@ -157,9 +157,9 @@ class AppSecondaryButton extends StatelessWidget {
     final content = Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 13),
       decoration: BoxDecoration(
-        color: enabled ? AppColors.mintSoft : AppColors.surfaceMuted,
+        color: enabled ? AppColors.accentSoft : AppColors.surfaceMuted,
         borderRadius: AppRadii.roundedMd,
-        border: Border.all(color: enabled ? AppColors.mint : AppColors.border, width: 1),
+        border: Border.all(color: enabled ? AppColors.accent : AppColors.border, width: 1),
       ),
       child: Row(
         mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,

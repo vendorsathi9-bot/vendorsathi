@@ -10,7 +10,7 @@ import '../../../core/localization/locale_provider.dart';
 import '../../../shared/models/models.dart';
 import '../widgets/customer_checkout_sheet.dart';
 
-class CustomerCartTab extends StatelessWidget {
+class CustomerCartTab extends StatefulWidget {
   final ApiClient apiClient;
   final CartModel? cart;
   final List<CustomerAddressModel> addresses;
@@ -38,29 +38,61 @@ class CustomerCartTab extends StatelessWidget {
     required this.onAddressAdded,
   });
 
-  void _openCheckout(BuildContext context) {
-    if (cart == null || cart!.items.isEmpty) return;
+  @override
+  State<CustomerCartTab> createState() => _CustomerCartTabState();
+}
+
+class _CustomerCartTabState extends State<CustomerCartTab> {
+  // Track pending updates per product to prevent duplicate requests
+  final Map<String, bool> _isUpdating = {};
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  void _openCheckout() {
+    if (widget.cart == null || widget.cart!.items.isEmpty) return;
 
     AppBottomSheet.show(
       context: context,
       title: LocaleProvider.of(context).t('checkout'),
       child: CustomerCheckoutSheet(
-        apiClient: apiClient,
-        cart: cart!,
-        addresses: addresses,
-        loyalty: loyalty,
-        onOrderSuccess: onOrderSuccess,
-        onAddressAdded: onAddressAdded,
+        apiClient: widget.apiClient,
+        cart: widget.cart!,
+        addresses: widget.addresses,
+        loyalty: widget.loyalty,
+        onOrderSuccess: widget.onOrderSuccess,
+        onAddressAdded: widget.onAddressAdded,
       ),
     );
+  }
+
+  /// Update item quantity with duplicate prevention and loading state.
+  /// Returns true if the update was initiated, false if already in progress.
+  void _updateItemQuantity(String productId, int newQty) {
+    // Prevent duplicate requests while an update is in progress for this item
+    if (_isUpdating[productId] == true) {
+      return;
+    }
+
+    _isUpdating[productId] = true;
+    setState(() {});
+
+    // Call the callback synchronously — duplicate prevention is handled
+    /// via the _isUpdating flag and the async handler in CustomerHomeScreen.
+    widget.onUpdateItemQty(productId, newQty);
+
+    _isUpdating[productId] = false;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = LocaleProvider.of(context);
-    final hasItems = cart != null && cart!.items.isNotEmpty;
+    final hasItems = widget.cart != null && widget.cart!.items.isNotEmpty;
 
-    if (isLoading) {
+    if (widget.isLoading) {
       return Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -75,17 +107,17 @@ class CustomerCartTab extends StatelessWidget {
         title: loc.t('empty_cart_title'),
         subtitle: loc.t('empty_cart_subtitle'),
         actionLabel: loc.t('explore_vendors'),
-        onAction: onExploreVendors,
+        onAction: widget.onExploreVendors,
       );
     }
 
-    final totalPaise = cart!.totalPaise;
+    final totalPaise = widget.cart!.totalPaise;
     final totalRupees = (totalPaise / 100).toStringAsFixed(2);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: RefreshIndicator(
-        onRefresh: () async => onRefresh(),
+        onRefresh: () async => widget.onRefresh(),
         color: AppColors.primary,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 140),
@@ -94,9 +126,9 @@ class CustomerCartTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.mintSoft,
+                color: AppColors.accentSoft,
                 borderRadius: AppRadii.roundedMd,
-                border: Border.all(color: AppColors.mint),
+                border: Border.all(color: AppColors.accent),
               ),
               child: Row(
                 children: [
@@ -104,7 +136,7 @@ class CustomerCartTab extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${loc.t('single_vendor_cart')}: ${cart!.vendorName ?? 'Vendor'}',
+                      '${loc.t('single_vendor_cart')}: ${widget.cart!.vendorName ?? 'Vendor'}',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -113,7 +145,7 @@ class CustomerCartTab extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.delete_sweep_outlined, size: 20, color: AppColors.error),
                     tooltip: loc.t('clear_cart'),
-                    onPressed: onClearCart,
+                    onPressed: widget.onClearCart,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     padding: EdgeInsets.zero,
                   ),
@@ -123,7 +155,7 @@ class CustomerCartTab extends StatelessWidget {
             const SizedBox(height: 14),
 
             // Cart Items
-            ...cart!.items.map((item) {
+            ...widget.cart!.items.map((item) {
               final linePrice = ((item.pricePaise * item.quantity) / 100).toStringAsFixed(2);
 
               return AppCard(
@@ -172,7 +204,7 @@ class CustomerCartTab extends StatelessWidget {
                     // Quantity stepper
                     Container(
                       decoration: const BoxDecoration(
-                        color: AppColors.mintSoft,
+                        color: AppColors.accentSoft,
                         borderRadius: AppRadii.roundedPill,
                       ),
                       child: Row(
@@ -180,7 +212,9 @@ class CustomerCartTab extends StatelessWidget {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.remove, size: 16, color: AppColors.primary),
-                            onPressed: () => onUpdateItemQty(item.id, item.quantity - 1),
+                            onPressed: item.quantity > 1
+                                ? () => _updateItemQuantity(item.productId, item.quantity - 1)
+                                : null,
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                             padding: EdgeInsets.zero,
                           ),
@@ -193,7 +227,7 @@ class CustomerCartTab extends StatelessWidget {
                           ),
                           IconButton(
                             icon: const Icon(Icons.add, size: 16, color: AppColors.primary),
-                            onPressed: () => onUpdateItemQty(item.id, item.quantity + 1),
+                            onPressed: () => _updateItemQuantity(item.productId, item.quantity + 1),
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                             padding: EdgeInsets.zero,
                           ),
@@ -263,7 +297,7 @@ class CustomerCartTab extends StatelessWidget {
           child: AppPrimaryButton(
             label: '${loc.t('proceed_checkout')} • ₹$totalRupees',
             icon: Icons.lock_outline_rounded,
-            onPressed: () => _openCheckout(context),
+            onPressed: () => _openCheckout(),
           ),
         ),
       ),

@@ -292,9 +292,9 @@ class _DeliveryRouteScreenState extends State<DeliveryRouteScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.mintSoft,
+                          color: AppColors.accentSoft,
                           borderRadius: AppRadii.roundedMd,
-                          border: Border.all(color: AppColors.mint),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -358,7 +358,7 @@ class _DeliveryRouteScreenState extends State<DeliveryRouteScreen> {
                         Container(
                           width: 28,
                           height: 28,
-                          decoration: const BoxDecoration(color: AppColors.mintSoft, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
                           child: const Icon(Icons.storefront_rounded, size: 16, color: AppColors.primary),
                         ),
                         const SizedBox(width: 10),

@@ -1,58 +1,71 @@
 import 'package:flutter/material.dart';
 
 /// VendorSaathi Design System — Color Palette
-/// Visual Direction: Deep forest green brand, warm off-white canvas, soft mint accents, dark charcoal text.
+/// Source of truth: Landing page (tailwind.config.ts)
+/// Brand: Warm cream/amber/brown — NOT green/mint
 class AppColors {
-  // Brand Primary — Deep Forest Green
-  static const Color primary = Color(0xFF1B4332);
-  static const Color primaryDark = Color(0xFF133024);
-  static const Color primaryLight = Color(0xFF2D6A4F);
-  static const Color primaryHover = Color(0xFF225740);
+  // Brand Primary — Golden Amber
+  static const Color primary = Color(0xFFF4B400);        // #F4B400
+  static const Color primaryDark = Color(0xFFDCA000);    // #DCA000
+  static const Color primaryLight = Color(0xFFF7C933);   // Lighter amber for hover/active
+  static const Color primaryHover = Color(0xFFE6A800);   // Between primary and primaryDark
 
-  // Brand Secondary & Accents — Mint & Emerald
-  static const Color accent = Color(0xFF40916C);
-  static const Color accentLight = Color(0xFF52B788);
-  static const Color mint = Color(0xFFD8F3DC);
-  static const Color mintSoft = Color(0xFFE8F5EE);
-  static const Color mintLight = Color(0xFFF2F9F5);
+  // Brand Accent — Soft Cream
+  static const Color accent = Color(0xFFFEF4CD);         // #FEF4CD - soft cream accent
+  static const Color accentLight = Color(0xFFFEF9E7);    // Lighter cream
+  static const Color accentSoft = Color(0xFFFDF6D8);     // Subtle cream background
 
-  // Backgrounds & Canvas — Warm Off-White
-  static const Color background = Color(0xFFFAF9F6);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF4F6F4);
-  static const Color surfaceElevated = Color(0xFFFFFFFF);
+  // Backgrounds & Canvas — Warm Cream
+  static const Color background = Color(0xFFFFFCEF);     // #FFFCEF - main page background
+  static const Color surface = Color(0xFFFFFFFF);        // #FFFFFF - cards and surfaces
+  static const Color surfaceMuted = Color(0xFFFFF8E8);   // Slightly warmer than surface
+  static const Color surfaceElevated = Color(0xFFFFFFFF); // Elevated surfaces
 
-  // Typography — Charcoal
-  static const Color textPrimary = Color(0xFF19241E);
-  static const Color textSecondary = Color(0xFF5A6B62);
-  static const Color textTertiary = Color(0xFF8A9A92);
-  static const Color textWhite = Color(0xFFFFFFFF);
+  // Typography — Espresso & Brown
+  static const Color textPrimary = Color(0xFF38200F);    // #38200F - espresso, primary text
+  static const Color textSecondary = Color(0xFF806B55);  // #806B55 - brown, secondary text
+  static const Color textTertiary = Color(0xFFA6937D);   // Muted brown for tertiary
+  static const Color textWhite = Color(0xFFFFFFFF);      // White text on dark backgrounds
 
   // Borders & Dividers
-  static const Color border = Color(0xFFE2E8E4);
-  static const Color borderLight = Color(0xFFEDF2EE);
-  static const Color borderFocused = Color(0xFF1B4332);
-  static const Color divider = Color(0xFFECEFE7);
+  static const Color border = Color(0xFFEAE1D1);         // #EAE1D1 - warm beige borders
+  static const Color borderLight = Color(0xFFF3EBD8);    // Lighter border
+  static const Color borderFocused = Color(0xFFF4B400);  // Primary amber for focus
+  static const Color divider = Color(0xFFEAE1D1);        // Same as border
 
-  // Status & Feedback
-  static const Color success = Color(0xFF16A34A);
-  static const Color successBg = Color(0xFFDCFCE7);
-  static const Color successText = Color(0xFF14532D);
+  // Status & Feedback — Preserve semantic meaning, align with brand
+  static const Color success = Color(0xFF2F7D4F);        // #2F7D4F - success green (from landing)
+  static const Color successBg = Color(0xFFEAF6EE);      // #EAF6EE - success background
+  static const Color successText = Color(0xFF1E5A35);    // Darker success text
 
-  static const Color warning = Color(0xFFD97706);
-  static const Color warningBg = Color(0xFFFEF3C7);
-  static const Color warningText = Color(0xFF78350F);
+  static const Color warning = Color(0xFFF4B400);        // Use primary amber for warning
+  static const Color warningBg = Color(0xFFFEF4CD);      // Soft cream background
+  static const Color warningText = Color(0xFF8B6D00);    // Dark amber text
 
-  static const Color error = Color(0xFFDC2626);
-  static const Color errorBg = Color(0xFFFEE2E2);
-  static const Color errorText = Color(0xFF7F1D1D);
+  static const Color error = Color(0xFFDC2626);          // Standard error red
+  static const Color errorBg = Color(0xFFFEE2E2);        // Light error background
+  static const Color errorText = Color(0xFF7F1D1D);      // Dark error text
 
-  static const Color info = Color(0xFF2563EB);
-  static const Color infoBg = Color(0xFFDBEAFE);
-  static const Color infoText = Color(0xFF1E3A8A);
+  static const Color info = Color(0xFF2563EB);           // Standard info blue
+  static const Color infoBg = Color(0xFFDBEAFE);         // Light info background
+  static const Color infoText = Color(0xFF1E3A8A);       // Dark info text
 
-  // Neutral Grays for disabled & skeleton states
-  static const Color disabled = Color(0xFFCBD5E1);
-  static const Color skeletonBase = Color(0xFFE6EBE8);
-  static const Color skeletonHighlight = Color(0xFFF4F8F6);
+  // Neutral for disabled & skeleton states
+  static const Color disabled = Color(0xFFD4C4A8);       // Warm disabled
+  static const Color skeletonBase = Color(0xFFF3EBD8);   // Warm skeleton base
+  static const Color skeletonHighlight = Color(0xFFF9F2E7); // Warm skeleton highlight
+
+  // Brand Accent Compatibility Aliases (maps old mint tokens to warm soft cream)
+  static const Color mint = accent;                      // #FEF4CD
+  static const Color mintSoft = accentSoft;              // #FDF6D8
+  static const Color mintLight = accentLight;            // #FEF9E7
+
+  // Espresso-based shadow colors (matching landing page shadows)
+  static const Color shadowEspresso = Color(0xFF38200F); // Espresso for shadows
+  static const Color shadowEspresso05 = Color(0x0D38200F); // ~5% opacity
+  static const Color shadowEspresso10 = Color(0x1A38200F); // ~10% opacity
+  static const Color shadowEspresso20 = Color(0x3338200F); // ~20% opacity
+  static const Color shadowEspresso30 = Color(0x4D38200F); // ~30% opacity
+  static const Color shadowEspresso40 = Color(0x6638200F); // ~40% opacity
+  static const Color shadowEspresso50 = Color(0x8038200F); // ~50% opacity
 }

@@ -29,6 +29,30 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins/Poppins-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Poppins/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins/Poppins-Bold.ttf
+          weight: 700
+    - family: NotoSansKannada
+      fonts:
+        - asset: assets/fonts/NotoSansKannada/NotoSansKannada-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansKannada/NotoSansKannada-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansKannada/NotoSansKannada-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansKannada/NotoSansKannada-Bold.ttf
+          weight: 700
+
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: false

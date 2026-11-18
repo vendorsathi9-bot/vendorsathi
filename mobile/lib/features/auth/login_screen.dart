@@ -25,7 +25,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
+  final _phoneController = TextEditingController(text: '+91');
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -149,9 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: AppColors.mintSoft,
+              color: AppColors.accentSoft,
               borderRadius: AppRadii.roundedPill,
-              border: Border.all(color: AppColors.mint, width: 1),
+              border: Border.all(color: AppColors.accent, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -171,15 +171,15 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Brand Avatar with forest green accent
+                // Branded storefront avatar
                 Center(
                   child: Container(
                     width: 76,
                     height: 76,
                     decoration: BoxDecoration(
-                      color: AppColors.mintSoft,
+                      color: AppColors.accentSoft,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.mint, width: 1.5),
+                      border: Border.all(color: AppColors.accent, width: 1.5),
                     ),
                     child: const Icon(
                       Icons.storefront_rounded,

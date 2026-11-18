@@ -130,9 +130,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: 68,
                     height: 68,
                     decoration: BoxDecoration(
-                      color: AppColors.mintSoft,
+                      color: AppColors.accentSoft,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.mint, width: 1.5),
+                      border: Border.all(color: AppColors.accent, width: 1.5),
                     ),
                     child: const Icon(
                       Icons.person_add_alt_1_rounded,

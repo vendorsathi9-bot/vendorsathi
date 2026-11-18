@@ -17,8 +17,16 @@ func SecurityHeadersMiddleware(enableHSTS bool) gin.HandlerFunc {
 		c.Header("Permissions-Policy", "geolocation=(self), camera=(), microphone=()")
 		// The API is intentionally consumed by separate admin/landing origins.
 		c.Header("Cross-Origin-Resource-Policy", "cross-origin")
+		c.Header("Content-Security-Policy",
+			"default-src 'self'; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"script-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data:; "+
+				"connect-src 'self'; "+
+				"font-src 'self'; "+
+				"frame-src 'none';")
 		if enableHSTS {
-			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 		}
 		c.Next()
 	}

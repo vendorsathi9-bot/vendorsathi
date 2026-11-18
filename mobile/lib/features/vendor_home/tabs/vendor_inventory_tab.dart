@@ -155,7 +155,7 @@ class VendorInventoryTab extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: available > 5 ? AppColors.mintSoft : (available > 0 ? AppColors.warningBg : AppColors.errorBg),
+                        color: available > 5 ? AppColors.accentSoft : (available > 0 ? AppColors.warningBg : AppColors.errorBg),
                         borderRadius: AppRadii.roundedPill,
                       ),
                       child: Text(

@@ -317,7 +317,7 @@ class _DeliveryAgentHomeScreenState extends State<DeliveryAgentHomeScreen> {
                                           Container(
                                             width: 28,
                                             height: 28,
-                                            decoration: const BoxDecoration(color: AppColors.mintSoft, shape: BoxShape.circle),
+                                            decoration: const BoxDecoration(color: AppColors.accentSoft, shape: BoxShape.circle),
                                             child: const Icon(Icons.storefront_rounded, size: 16, color: AppColors.primary),
                                           ),
                                           const SizedBox(width: 10),

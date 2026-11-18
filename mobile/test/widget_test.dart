@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vendorsaathi_mobile/app/theme.dart';
+import 'package:vendorsaathi_mobile/core/design_system/app_colors.dart';
 import 'package:vendorsaathi_mobile/core/localization/locale_provider.dart';
 import 'package:vendorsaathi_mobile/core/map/map_style_config.dart';
 import 'package:vendorsaathi_mobile/main.dart';
@@ -237,5 +239,27 @@ void main() {
     expect(cfg.provider, 'openfreemap');
     expect(cfg.effectiveStyleString, 'https://tiles.openfreemap.org/styles/liberty');
     expect(cfg.isValid, true);
+  });
+
+  test('AppColors tokens exactly match the landing page brand identity', () {
+    expect(AppColors.primary, const Color(0xFFF4B400));
+    expect(AppColors.primaryDark, const Color(0xFFDCA000));
+    expect(AppColors.accent, const Color(0xFFFEF4CD));
+    expect(AppColors.background, const Color(0xFFFFFCEF));
+    expect(AppColors.surface, const Color(0xFFFFFFFF));
+    expect(AppColors.textPrimary, const Color(0xFF38200F));
+    expect(AppColors.textSecondary, const Color(0xFF806B55));
+    expect(AppColors.border, const Color(0xFFEAE1D1));
+    expect(AppColors.success, const Color(0xFF2F7D4F));
+    expect(AppColors.successBg, const Color(0xFFEAF6EE));
+  });
+
+  test('AppTheme lightTheme configures brand colors, Poppins typography and Kannada fallback', () {
+    final theme = AppTheme.lightTheme;
+    expect(theme.colorScheme.primary, AppColors.primary);
+    expect(theme.scaffoldBackgroundColor, AppColors.background);
+    expect(theme.cardTheme.color, AppColors.surface);
+    expect(theme.textTheme.bodyMedium?.fontFamily, 'Poppins');
+    expect(theme.textTheme.bodyMedium?.fontFamilyFallback, contains('NotoSansKannada'));
   });
 }

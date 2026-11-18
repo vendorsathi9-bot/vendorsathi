@@ -32,9 +32,9 @@ class AppEmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: AppColors.mintSoft,
+                color: AppColors.accentSoft,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.mint, width: 1.5),
+                border: Border.all(color: AppColors.border, width: 1.5),
               ),
               child: Icon(icon, size: 36, color: AppColors.primary),
             ),

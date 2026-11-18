@@ -2,7 +2,9 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -97,31 +99,77 @@ func NewTxManager(pool *pgxpool.Pool) *TxManager {
 	return &TxManager{pool: pool}
 }
 
+// IsRetryableTxErr reports whether an error represents a PostgreSQL deadlock or serialization failure
+// that is safe to retry with exponential backoff.
+func IsRetryableTxErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		// 40P01 = deadlock_detected, 40001 = serialization_failure
+		return pgErr.Code == "40P01" || pgErr.Code == "40001"
+	}
+	return false
+}
+
 func (tm *TxManager) RunInTx(ctx context.Context, fn func(context.Context) error) error {
-	tx, err := tm.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
+	return tm.RunInTxWithRetry(ctx, 3, fn)
+}
+
+// RunInTxWithRetry executes fn inside a transaction, retrying up to maxAttempts on deadlock or serialization errors.
+func (tm *TxManager) RunInTxWithRetry(ctx context.Context, maxAttempts int, fn func(context.Context) error) error {
+	if maxAttempts < 1 {
+		maxAttempts = 1
 	}
 
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback(ctx)
-			panic(p)
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(25*(1<<attempt)) * time.Millisecond
+			jitter := time.Duration(rand.Intn(20)) * time.Millisecond
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff + jitter):
+			}
 		}
-	}()
 
-	ctx = context.WithValue(ctx, txKey{}, tx)
-	if err := fn(ctx); err != nil {
-		if rbErr := tx.Rollback(ctx); rbErr != nil {
-			return fmt.Errorf("rollback: %v (original error: %w)", rbErr, err)
+		tx, err := tm.pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("begin transaction: %w", err)
 		}
-		return err
-	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
+		err = func() (txErr error) {
+			defer func() {
+				if p := recover(); p != nil {
+					_ = tx.Rollback(ctx)
+					panic(p)
+				}
+			}()
+
+			txCtx := context.WithValue(ctx, txKey{}, tx)
+			if fnErr := fn(txCtx); fnErr != nil {
+				_ = tx.Rollback(ctx)
+				return fnErr
+			}
+
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				return fmt.Errorf("commit transaction: %w", commitErr)
+			}
+			return nil
+		}()
+
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		if !IsRetryableTxErr(err) || ctx.Err() != nil {
+			return err
+		}
 	}
-	return nil
+	return lastErr
 }
 
 func (tm *TxManager) Pool() *pgxpool.Pool {

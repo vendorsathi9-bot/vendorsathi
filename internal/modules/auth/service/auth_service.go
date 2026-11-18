@@ -8,13 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/google/uuid"
 	"vendorsaathi/internal/modules/auth/model"
 	customermodel "vendorsaathi/internal/modules/customers/model"
 	"vendorsaathi/internal/platform/auth"
 	"vendorsaathi/internal/shared"
+	"vendorsaathi/internal/platform/database"
 )
 
+// UserRepository is the interface for user data operations.
 type UserRepository interface {
 	CreateUser(ctx context.Context, phone, email, passwordHash string) (*model.User, error)
 	GetUserByPhone(ctx context.Context, phone string) (*model.User, error)
@@ -29,40 +32,41 @@ type UserRepository interface {
 	RevokeRefreshSession(ctx context.Context, tokenHash string) error
 }
 
+// CustomerRepository is the interface for customer profile data operations.
 type CustomerRepository interface {
 	CreateProfile(ctx context.Context, profile *customermodel.CustomerProfile) error
 	GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*customermodel.CustomerProfile, error)
 }
 
+// TxManager is the transaction manager interface.
 type TxManager interface {
 	RunInTx(ctx context.Context, fn func(context.Context) error) error
 }
 
+// Clock is the clock interface.
 type Clock interface {
 	Now() time.Time
 }
 
+// AuthService handles authentication operations for the VendorSaathi API.
 type AuthService struct {
-	userRepo     UserRepository
-	customerRepo CustomerRepository
-	txManager    TxManager
-	jwtManager   *auth.JWTManager
-	clock        Clock
-	password     auth.PasswordParams
+	userRepo      UserRepository
+	customerRepo  CustomerRepository
+	txManager     TxManager
+	jwtManager    *auth.JWTManager
+	clock         Clock
+	dbPool        *pgxpool.Pool
+	password      auth.PasswordParams
 }
 
-// passwordUpdater is implemented by the production user repository. It is
-// optional so existing test doubles keep compiling.
-type passwordUpdater interface {
-	UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
-}
-
+// NewAuthService creates a new AuthService with a database-backed login attempt tracker.
 func NewAuthService(
 	userRepo UserRepository,
 	customerRepo CustomerRepository,
 	txManager TxManager,
 	jwtManager *auth.JWTManager,
 	clock Clock,
+	dbPool *pgxpool.Pool,
 	passwordParams ...auth.PasswordParams,
 ) *AuthService {
 	params := auth.DefaultPasswordParams()
@@ -75,10 +79,159 @@ func NewAuthService(
 		txManager:    txManager,
 		jwtManager:   jwtManager,
 		clock:        clock,
+		dbPool:       dbPool,
 		password:     params,
 	}
 }
 
+// CheckLoginAttempt checks if the account is locked due to too many failed attempts.
+// Uses the database for persistence across restarts and distributed deployments.
+// Returns (locked, failureCount).
+func (s *AuthService) CheckLoginAttempt(ctx context.Context, phone string) (locked bool, failureCount int, err error) {
+	if s.dbPool == nil {
+		return false, 0, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	db := database.DBFromContext(ctx, s.dbPool)
+	if db == nil {
+		return false, 0, nil
+	}
+
+	var count int
+	var lockedUntil *time.Time
+	err = db.QueryRow(ctx, `
+		SELECT failed_count, locked_until FROM login_attempts
+		WHERE phone = $1
+	`, phone).Scan(&count, &lockedUntil)
+	if err != nil {
+		return false, 0, nil
+	}
+
+	if lockedUntil != nil && lockedUntil.After(s.clock.Now()) {
+		return true, count, nil
+	}
+
+	return false, count, nil
+}
+
+// RecordLoginSuccess clears the failure record for the given phone number on successful login.
+func (s *AuthService) RecordLoginSuccess(ctx context.Context, phone string) error {
+	if s.dbPool == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	db := database.DBFromContext(ctx, s.dbPool)
+	if db == nil {
+		return nil
+	}
+
+	_, err := db.Exec(ctx, `
+		UPDATE login_attempts SET succeeded_at = NOW(), failed_count = 0, locked_until = NULL WHERE phone = $1
+	`, phone)
+	return err
+}
+
+// recordLoginAttemptFailure records a failed login attempt in the database.
+func (s *AuthService) recordLoginAttemptFailure(ctx context.Context, phone string) {
+	if s.dbPool == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	db := database.DBFromContext(ctx, s.dbPool)
+	if db == nil {
+		return
+	}
+
+	_, _ = db.Exec(ctx, `
+		INSERT INTO login_attempts (id, phone, failed_count, failed_at, locked_until, succeeded_at)
+		VALUES (gen_random_uuid(), $1, 1, NOW(), NULL, NULL)
+		ON CONFLICT (phone) DO UPDATE
+		SET failed_count = CASE 
+		        WHEN login_attempts.succeeded_at IS NOT NULL OR login_attempts.failed_at < NOW() - INTERVAL '15 minutes' THEN 1 
+		        ELSE login_attempts.failed_count + 1 
+		    END,
+		    locked_until = CASE 
+		        WHEN (login_attempts.succeeded_at IS NULL AND login_attempts.failed_at >= NOW() - INTERVAL '15 minutes' AND login_attempts.failed_count + 1 >= 5)
+		        THEN NOW() + INTERVAL '15 minutes'
+		        ELSE NULL 
+		    END,
+		    failed_at = NOW(),
+		    succeeded_at = NULL
+	`, phone)
+}
+
+// Login validates the user's credentials and returns a token pair.
+func (s *AuthService) Login(ctx context.Context, input model.LoginInput) (*model.TokenOutput, error) {
+	phone := strings.TrimSpace(input.Phone)
+	if phone == "" || input.Password == "" {
+		return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
+	}
+
+	// Check if account is locked due to too many failed attempts (database-backed)
+	locked, _, err := s.CheckLoginAttempt(ctx, phone)
+	if err != nil {
+		return nil, err
+	}
+	if locked {
+		return nil, shared.NewAppError("ACCOUNT_LOCKED", "too many failed login attempts; please try again later", shared.ErrUnauthorized)
+	}
+
+	user, err := s.userRepo.GetUserByPhone(ctx, phone)
+	if err != nil {
+		if errors.Is(err, shared.ErrNotFound) {
+			// Phone doesn't exist — record a failure and treat as invalid credentials
+			s.recordLoginAttemptFailure(ctx, phone)
+			return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
+		}
+		return nil, err
+	}
+
+	valid, needsRehash, err := auth.VerifyPasswordWithParams(input.Password, user.PasswordHash, s.password)
+	if err != nil || !valid {
+		// Record the failure
+		s.recordLoginAttemptFailure(ctx, phone)
+		// Do not reveal whether the phone number exists or the hash format is
+		// old; both cases are treated as invalid credentials.
+		return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
+	}
+
+	// Record success and clear failures
+	s.RecordLoginSuccess(ctx, phone)
+
+	if needsRehash {
+		// Transparently upgrade legacy/unversioned hashes after a successful
+		// login. A failure here must not block authentication.
+		if newHash, hashErr := auth.HashPasswordPHC(input.Password, s.password); hashErr == nil {
+			if updater, ok := s.userRepo.(interface{ UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error }); ok {
+				_ = updater.UpdatePassword(ctx, user.ID, newHash)
+			}
+		}
+	}
+
+	if user.Status != model.UserStatusActive {
+		return nil, shared.NewAppError("ACCOUNT_INACTIVE", "account is not active", shared.ErrUnauthorized)
+	}
+
+	roles, err := s.userRepo.GetUserRoles(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	permissions, err := s.userRepo.GetUserPermissions(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.generateTokenOutput(ctx, user, roles, permissions)
+}
+
+// Register creates a new user account with the given phone and password.
 func (s *AuthService) Register(ctx context.Context, input model.RegisterInput) (*model.TokenOutput, error) {
 	phone := strings.TrimSpace(input.Phone)
 	if phone == "" {
@@ -109,8 +262,6 @@ func (s *AuthService) Register(ctx context.Context, input model.RegisterInput) (
 	}
 
 	// 2. Hash the password with Argon2id using the configured cost parameters.
-	// Hashes are stored in the versioned PHC format so cost parameters can be
-	// raised later without invalidating existing accounts.
 	passwordHash, err := auth.HashPasswordPHC(input.Password, s.password)
 	if err != nil {
 		return nil, err
@@ -171,54 +322,26 @@ func (s *AuthService) Register(ctx context.Context, input model.RegisterInput) (
 	return tokenOutput, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, input model.LoginInput) (*model.TokenOutput, error) {
-	phone := strings.TrimSpace(input.Phone)
-	if phone == "" || input.Password == "" {
-		return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
+// ResetLoginAttempt resets the failure count for the given phone number.
+func (s *AuthService) ResetLoginAttempt(ctx context.Context, phone string) error {
+	if s.dbPool == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	db := database.DBFromContext(ctx, s.dbPool)
+	if db == nil {
+		return nil
 	}
 
-	user, err := s.userRepo.GetUserByPhone(ctx, phone)
-	if err != nil {
-		if errors.Is(err, shared.ErrNotFound) {
-			return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
-		}
-		return nil, err
-	}
-
-	valid, needsRehash, err := auth.VerifyPasswordWithParams(input.Password, user.PasswordHash, s.password)
-	if err != nil || !valid {
-		// Do not reveal whether the phone number exists or the hash format is
-		// old; both cases are treated as invalid credentials.
-		return nil, shared.NewAppError("INVALID_CREDENTIALS", "invalid credentials", shared.ErrUnauthorized)
-	}
-
-	if needsRehash {
-		// Transparently upgrade legacy/unversioned hashes after a successful
-		// login. A failure here must not block authentication.
-		if newHash, hashErr := auth.HashPasswordPHC(input.Password, s.password); hashErr == nil {
-			if updater, ok := s.userRepo.(passwordUpdater); ok {
-				_ = updater.UpdatePassword(ctx, user.ID, newHash)
-			}
-		}
-	}
-
-	if user.Status != model.UserStatusActive {
-		return nil, shared.NewAppError("ACCOUNT_INACTIVE", "account is not active", shared.ErrUnauthorized)
-	}
-
-	roles, err := s.userRepo.GetUserRoles(ctx, user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	permissions, err := s.userRepo.GetUserPermissions(ctx, user.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.generateTokenOutput(ctx, user, roles, permissions)
+	_, err := db.Exec(ctx, `
+		UPDATE login_attempts SET succeeded_at = NOW(), failed_count = 0, locked_until = NULL WHERE phone = $1
+	`, phone)
+	return err
 }
 
+// Refresh validates the refresh token JWT signature & claims.
 func (s *AuthService) Refresh(ctx context.Context, input model.RefreshInput) (*model.TokenOutput, error) {
 	refreshToken := strings.TrimSpace(input.RefreshToken)
 	if refreshToken == "" {
@@ -254,7 +377,7 @@ func (s *AuthService) Refresh(ctx context.Context, input model.RefreshInput) (*m
 
 	// 3. Check that the associated user is active BEFORE revoking the old session
 	userUUID := session.UserID
-	if userUUID == uuid.Nil && claims != nil {
+	if claims != nil {
 		if parsed, parseErr := uuid.Parse(claims.UserID); parseErr == nil {
 			userUUID = parsed
 		}
@@ -291,11 +414,13 @@ func (s *AuthService) Refresh(ctx context.Context, input model.RefreshInput) (*m
 	return s.generateTokenOutput(ctx, user, roles, permissions)
 }
 
+// Logout revokes the refresh session and logs out the user.
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 	tokenHash := hashToken(refreshToken)
 	return s.userRepo.RevokeRefreshSession(ctx, tokenHash)
 }
 
+// GetMe returns the current authenticated user's information.
 func (s *AuthService) GetMe(ctx context.Context, userID uuid.UUID) (*model.MeOutput, error) {
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -319,6 +444,7 @@ func (s *AuthService) GetMe(ctx context.Context, userID uuid.UUID) (*model.MeOut
 	}, nil
 }
 
+// generateTokenOutput generates a token pair for the given user.
 func (s *AuthService) generateTokenOutput(ctx context.Context, user *model.User, roles, permissions []string) (*model.TokenOutput, error) {
 	sessionID := uuid.New().String()
 	tokenPair, err := s.jwtManager.GenerateTokenPair(user.ID.String(), sessionID, roles, permissions)

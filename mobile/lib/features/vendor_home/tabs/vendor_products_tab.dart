@@ -207,7 +207,7 @@ class _VendorProductsTabState extends State<VendorProductsTab> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: product.active ? AppColors.mintSoft : AppColors.surfaceMuted,
+                                    color: product.active ? AppColors.accentSoft : AppColors.surfaceMuted,
                                     borderRadius: AppRadii.roundedMd,
                                   ),
                                   child: Icon(
@@ -247,7 +247,7 @@ class _VendorProductsTabState extends State<VendorProductsTab> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: product.active ? AppColors.mintSoft : AppColors.surfaceMuted,
+                                      color: product.active ? AppColors.accentSoft : AppColors.surfaceMuted,
                                       borderRadius: AppRadii.roundedPill,
                                       border: Border.all(
                                         color: product.active ? AppColors.primary : AppColors.border,

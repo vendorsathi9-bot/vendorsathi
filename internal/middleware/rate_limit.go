@@ -13,6 +13,7 @@ type RateLimiter struct {
 	mu       sync.Mutex
 	visitors map[string]*visitor
 	rate     int
+	burst    int
 	window   time.Duration
 }
 
@@ -22,9 +23,21 @@ type visitor struct {
 }
 
 func NewRateLimiter(rate int, window time.Duration) *RateLimiter {
+	burst := rate / 4
+	if burst < 5 {
+		burst = 5
+	}
+	return NewRateLimiterWithBurst(rate, burst, window)
+}
+
+func NewRateLimiterWithBurst(rate, burst int, window time.Duration) *RateLimiter {
+	if burst < 0 {
+		burst = 0
+	}
 	rl := &RateLimiter{
 		visitors: make(map[string]*visitor),
 		rate:     rate,
+		burst:    burst,
 		window:   window,
 	}
 	go rl.cleanup()
@@ -65,7 +78,8 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		if v.count >= rl.rate {
+		maxAllowed := rl.rate + rl.burst
+		if v.count >= maxAllowed {
 			rl.mu.Unlock()
 			retryAfter := int(rl.window.Seconds()) - int(now.Sub(v.lastSeen).Seconds())
 			if retryAfter < 1 {

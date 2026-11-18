@@ -55,9 +55,9 @@ class _CustomerOrdersTabState extends State<CustomerOrdersTab> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.mintSoft,
+                color: AppColors.accentSoft,
                 borderRadius: AppRadii.roundedMd,
-                border: Border.all(color: AppColors.mint),
+                border: Border.all(color: AppColors.border),
               ),
               child: const Row(
                 children: [
@@ -616,9 +616,9 @@ class _OrderTrackingViewState extends State<_OrderTrackingView> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.mintSoft,
+              color: AppColors.accentSoft,
               borderRadius: AppRadii.roundedMd,
-              border: Border.all(color: AppColors.mint),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [

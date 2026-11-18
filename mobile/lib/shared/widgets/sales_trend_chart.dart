@@ -44,7 +44,7 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
               width: 48,
               height: 48,
               decoration: const BoxDecoration(
-                color: AppColors.mintSoft,
+                color: AppColors.accentSoft,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.bar_chart_rounded, size: 26, color: AppColors.primary),
@@ -94,7 +94,7 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
                     width: 32,
                     height: 32,
                     decoration: const BoxDecoration(
-                      color: AppColors.mintSoft,
+                      color: AppColors.accentSoft,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.insights_rounded, color: AppColors.primary, size: 18),
@@ -118,9 +118,9 @@ class _SalesTrendChartState extends State<SalesTrendChart> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.mintSoft,
+                  color: AppColors.accentSoft,
                   borderRadius: AppRadii.roundedPill,
-                  border: Border.all(color: AppColors.mint),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   '₹${(totalSalesPaise / 100).toStringAsFixed(2)}',

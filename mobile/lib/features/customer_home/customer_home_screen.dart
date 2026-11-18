@@ -35,6 +35,7 @@ class CustomerHomeScreen extends StatefulWidget {
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   int _currentIndex = 0;
   bool _isLoading = true;
+  bool _updateItemInProgress = false;
 
   // Location (Default: Bangalore Majestic)
   double _currentLat = 12.9767;
@@ -195,6 +196,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Future<void> _handleUpdateItemQty(String itemId, int newQty) async {
+    // Prevent duplicate requests while an update is in progress
+    if (_updateItemInProgress) return;
+    _updateItemInProgress = true;
     try {
       if (newQty <= 0) {
         await widget.apiClient.delete('/carts/items/$itemId');
@@ -208,8 +212,26 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           _cart = updatedCart != null ? CartModel.fromJson(updatedCart) : null;
         });
       }
+    } on ApiException catch (e) {
+      // Map backend errors to user-friendly messages
+      final statusCode = e.statusCode;
+      String message;
+      if (statusCode == 400) {
+        message = e.message ?? 'Invalid quantity requested';
+      } else if (statusCode == 409) {
+        message = e.message ?? 'Insufficient stock or concurrent modification';
+      } else if (statusCode == 404) {
+        message = e.message ?? 'Product not found in cart';
+      } else if (statusCode == 403) {
+        message = e.message ?? 'Not authorized to modify this item';
+      } else {
+        message = e.message ?? 'Failed to update item';
+      }
+      if (mounted) AppFeedback.showError(context, message);
     } catch (e) {
       if (mounted) AppFeedback.showError(context, 'Failed to update item: $e');
+    } finally {
+      _updateItemInProgress = false;
     }
   }
 

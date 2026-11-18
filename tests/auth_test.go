@@ -269,7 +269,7 @@ func setupAuthTestEnv() (*authservice.AuthService, *mockUserRepo, *mockCustomerR
 	txMgr := &mockTxManager{userRepo: uRepo, customerRepo: cRepo}
 	jwtMgr := auth.NewJWTManager("test-secret-key-at-least-32-bytes-long!", "vendorsaathi", "vendorsaathi-test", 15*time.Minute, 24*time.Hour)
 	clk := &fixedClock{now: time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)}
-	svc := authservice.NewAuthService(uRepo, cRepo, txMgr, jwtMgr, clk)
+	svc := authservice.NewAuthService(uRepo, cRepo, txMgr, jwtMgr, clk, nil)
 	return svc, uRepo, cRepo, txMgr, jwtMgr, clk
 }
 

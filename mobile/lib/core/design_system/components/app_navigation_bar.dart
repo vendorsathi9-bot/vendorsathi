@@ -59,7 +59,7 @@ class AppBottomNav extends StatelessWidget {
                     curve: Curves.easeInOut,
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.mintSoft : Colors.transparent,
+                      color: isSelected ? AppColors.accentSoft : Colors.transparent,
                       borderRadius: AppRadii.roundedPill,
                     ),
                     child: Column(

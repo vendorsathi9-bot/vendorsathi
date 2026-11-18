@@ -3,14 +3,19 @@ info:
   title: VendorSaathi REST API
   description: Authoritative REST API for VendorSaathi — Local commerce platform connecting vendors and customers.
   version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 servers:
   - url: http://localhost:8080/api/v1
     description: Local development environment
-
+  - url: https://api.vendorsaathi.prod/v1
+    description: Production environment
 paths:
   /auth/register:
     post:
       summary: Register a new customer user
+      operationId: register
       requestBody:
         required: true
         content:
@@ -22,15 +27,18 @@ paths:
                 phone:
                   type: string
                   example: "+919876543210"
+                  description: Customer phone number in E.164 format
                 email:
                   type: string
                   format: email
                   example: "customer@example.com"
+                  description: Customer email address (optional)
                 password:
                   type: string
                   format: password
                   minLength: 8
                   example: "SecretPassword123"
+                  description: User password (minimum 8 characters)
       responses:
         '201':
           description: Customer registered successfully, token pair returned
@@ -40,12 +48,23 @@ paths:
                 $ref: '#/components/schemas/TokenResponse'
         '400':
           description: Validation error or invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Phone or email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /auth/login:
     post:
       summary: Authenticate with phone and password
+      operationId: login
       requestBody:
         required: true
         content:
@@ -57,10 +76,12 @@ paths:
                 phone:
                   type: string
                   example: "+919876543210"
+                  description: Customer phone number in E.164 format
                 password:
                   type: string
                   format: password
                   example: "SecretPassword123"
+                  description: User password
       responses:
         '200':
           description: Token pair returned
@@ -70,10 +91,17 @@ paths:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
           description: Invalid credentials or inactive account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /auth/refresh:
     post:
       summary: Refresh access token using a valid refresh token
+      operationId: refreshToken
       requestBody:
         required: true
         content:
@@ -84,6 +112,7 @@ paths:
               properties:
                 refresh_token:
                   type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       responses:
         '200':
           description: New token pair returned
@@ -93,10 +122,17 @@ paths:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
           description: Invalid or expired refresh token, or inactive account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /auth/logout:
     post:
       summary: Revoke refresh session and log out
+      operationId: logout
       requestBody:
         required: true
         content:
@@ -107,127 +143,381 @@ paths:
               properties:
                 refresh_token:
                   type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       responses:
         '204':
           description: Successfully logged out
+      security:
+        - BearerAuth: []
 
   /me:
     get:
       summary: Get current authenticated identity
-      security:
-        - BearerAuth: []
+      operationId: getMe
       responses:
         '200':
           description: User object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+        '401':
+          description: Access token expired or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /mobility/nearby-vendors:
     get:
       summary: Discover active nearby vendors using Haversine bounded distance
+      operationId: findNearbyVendors
       parameters:
         - name: lat
           in: query
           required: true
           schema:
             type: number
+            example: 12.9716
+          description: Customer latitude
         - name: lng
           in: query
           required: true
           schema:
             type: number
+            example: 77.5946
+          description: Customer longitude
         - name: radius_km
           in: query
           schema:
             type: number
             default: 5.0
+            description: Search radius in kilometers
       responses:
         '200':
           description: Array of nearby vendors with distance in km and coordinates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NearbyVendor'
+                    example:
+                      - id: "vendor-001"
+                        businessName: "Ramesh Organic Veggies"
+                        distanceKm: 2.3
+                        latitude: 12.9750
+                        longitude: 77.5980
+                        description: Nearby vendor list
+                  hasMore:
+                    type: boolean
+                    example: false
+              example:
+                success: true
+                data:
+                  - id: "vendor-001"
+                    businessName: "Ramesh Organic Veggies"
+                    distanceKm: 2.3
+                    latitude: 12.9750
+                    longitude: 77.5980
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /mobility/route:
     get:
       summary: Calculate road route, distance, travel duration, and GeoJSON geometry using OSRM
+      operationId: getRoute
       parameters:
         - name: origin_lat
           in: query
           required: true
           schema:
             type: number
+            example: 12.9716
+          description: Origin latitude
         - name: origin_lng
           in: query
           required: true
           schema:
             type: number
+            example: 77.5946
+          description: Origin longitude
         - name: dest_lat
           in: query
           required: true
           schema:
             type: number
+            example: 12.9800
+          description: Destination latitude
         - name: dest_lng
           in: query
           required: true
           schema:
             type: number
+            example: 77.6000
+          description: Destination longitude
       responses:
         '200':
           description: Route response containing distance in meters, duration in seconds, GeoJSON LineString coordinates, attribution, and open navigation URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  distance:
+                    type: integer
+                    description: Distance in meters
+                    example: 5000
+                  duration:
+                    type: integer
+                    description: Duration in seconds
+                    example: 300
+                  geometry:
+                    type: string
+                    format: geo json
+                    example: |
+                      {"type":"LineString","coordinates":[[72.8776,19.0761],[72.8786,19.0771]]}
+                  attribution:
+                    type: string
+                    example: "Route calculated via OSRM"
+                  navigationUrl:
+                    type: string
+                    example: "https://maps.google.com/?q=..."
+        '400':
+          description: Invalid origin or destination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /mobility/config:
     get:
       summary: Get active map provider configuration (tile URL, routing provider, geocoding provider)
+      operationId: getMapConfig
       responses:
         '200':
           description: Map provider metadata and tile URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider:
+                    type: string
+                    example: "openfreemap"
+                    description: Map provider name
+                  styleUrl:
+                    type: string
+                    example: "https://tiles.openfreemap.org/styles/liberty"
+                    description: Map style URL
+                  tileUrl:
+                    type: string
+                    example: "https://tiles.openfreemap.org/tiles/liberty/{z}/{x}/{y}.png"
+                    description: Tile tile URL template
+                  attribution:
+                    type: string
+                    example: "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
+                  routingProvider:
+                    type: string
+                    example: "osrm"
+                    description: Routing service provider
+                  geocodingProvider:
+                    type: string
+                    example: "nominatim"
+                    description: Geocoding service provider
+        '404':
+          description: Map configuration not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /mobility/geocode:
     get:
       summary: Forward geocode an address to coordinates using Nominatim
+      operationId: geocode
       parameters:
         - name: q
           in: query
           required: true
           schema:
             type: string
+            example: "1600 Amphitheatre Parkway, Mountain View, CA"
+          description: Address to geocode
         - name: limit
           in: query
           schema:
             type: integer
             default: 5
+            description: Maximum number of results
       responses:
         '200':
           description: List of matching geocoded locations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeocodeResult'
+                    example:
+                      - place_id: "ChIJd8BlQ2BZwokRAFUEcm_qB_g"
+                        latitude: 37.4220
+                        longitude: -122.0841
+                        formattedAddress: "1600 Amphitheatre Pkwy, Mountain View, CA 94043, USA"
+                      - place_id: "ChIAzi-2eS-6r4KGEFsHoY-_ respirator"
+                        latitude: 37.4170
+                        longitude: -122.0666
+                        formattedAddress: "Mountain View, CA 94043, USA"
+                example:
+                  success: true
+                  data:
+                    - place_id: "ChIJd8BlQ2BZwokRAFUEcm_qB_g"
+                      latitude: 37.4220
+                      longitude: -122.0841
+                      formattedAddress: "1600 Amphitheatre Pkwy, Mountain View, CA 94043, USA"
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /mobility/reverse-geocode:
     get:
       summary: Reverse geocode latitude and longitude to address using Nominatim
+      operationId: reverseGeocode
       parameters:
         - name: lat
           in: query
           required: true
           schema:
             type: number
+            example: 37.4220
+          description: Latitude to reverse geocode
         - name: lng
           in: query
           required: true
           schema:
             type: number
+            example: -122.0841
+          description: Longitude to reverse geocode
       responses:
         '200':
           description: Reverse geocoded address information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      place_id:
+                        type: string
+                        example: "ChIJd8BlQ2BZwokRAFUEcm_qB_g"
+                      formattedAddress:
+                        type: string
+                        example: "1600 Amphitheatre Pkwy, Mountain View, CA 94043, USA"
+                example:
+                  success: true
+                  data:
+                    place_id: "ChIJd8BlQ2BZwokRAFUEcm_qB_g"
+                    formattedAddress: "1600 Amphitheatre Pkwy, Mountain View, CA 94043, USA"
+        '400':
+          description: Invalid coordinates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /carts/me:
     get:
       summary: Get current customer active cart
-      security:
-        - BearerAuth: []
+      operationId: getMyCart
       responses:
         '200':
           description: Active cart with line items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cartId:
+                    type: string
+                    example: "cart-001"
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        productId:
+                          type: string
+                          example: "prod-001"
+                        quantity:
+                          type: integer
+                          minimum: 1
+                          example: 2
+                        price:
+                          type: number
+                          example: 50.0
+                    example:
+                      - productId: "prod-001"
+                        quantity: 2
+                        price: 50.0
+                  total:
+                    type: number
+                    example: 100.0
+              example:
+                cartId: "cart-001"
+                items:
+                  - productId: "prod-001"
+                    quantity: 2
+                    price: 50.0
+                total: 100.0
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /carts/items:
     post:
       summary: Add or update item in cart
-      security:
-        - BearerAuth: []
+      operationId: addCartItem
       requestBody:
         required: true
         content:
@@ -239,50 +529,125 @@ paths:
                 product_id:
                   type: string
                   format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                  description: Product UUID
                 quantity:
                   type: integer
                   minimum: 1
+                  example: 2
+                  description: Quantity to add or update
       responses:
         '200':
           description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Invalid request or insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /orders:
     post:
       summary: Idempotent checkout transaction with atomic stock reservation
-      security:
-        - BearerAuth: []
+      operationId: checkout
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [fulfilment_type]
+              required: [fulfilment_type, idempotency_key]
               properties:
                 fulfilment_type:
                   type: string
                   enum: [PICKUP, DELIVERY]
+                  example: "PICKUP"
+                  description: Fulfilment type
                 idempotency_key:
                   type: string
+                  example: "checkout-2024-11-18-001"
+                  description: Unique idempotency key to prevent duplicate checkouts
                 delivery_address_snapshot:
                   type: string
+                  example: "123 Main St, Bangalore, Karnataka 560001"
+                  description: Snapshot of delivery address at checkout time
       responses:
         '201':
           description: Order created with PENDING status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          description: Validation error (e.g., insufficient stock, invalid fulfilment type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate checkout with same idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
     get:
       summary: List orders for authenticated user
-      security:
-        - BearerAuth: []
+      operationId: listOrders
       responses:
         '200':
           description: Paginated orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderSummary'
+                    example:
+                      - id: "order-001"
+                        status: "PENDING"
+                        totalPaise: 10000
+                        createdAt: "2024-11-18T10:30:00Z"
+                example:
+                  success: true
+                  data:
+                    - id: "order-001"
+                      status: "PENDING"
+                      totalPaise: 10000
+                      createdAt: "2024-11-18T10:30:00Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /orders/{id}/accept:
     post:
       summary: Vendor accepts pending order
-      security:
-        - BearerAuth: []
+      operationId: acceptOrder
       parameters:
         - name: id
           in: path
@@ -290,15 +655,54 @@ paths:
           schema:
             type: string
             format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Order UUID
       responses:
         '200':
-          description: Order moved to ACCEPTED
+          description: Order moved to ACCEPTED status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "order-001"
+                        description: Order UUID
+                      status:
+                        type: string
+                        enum: [PENDING, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, CANCELLED, REJECTED]
+                        example: "ACCEPTED"
+                example:
+                  success: true
+                  data:
+                    id: "order-001"
+                    status: "ACCEPTED"
+        '400':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /orders/{id}/reject:
     post:
       summary: Vendor rejects order and releases inventory reservation
-      security:
-        - BearerAuth: []
+      operationId: rejectOrder
       parameters:
         - name: id
           in: path
@@ -306,15 +710,42 @@ paths:
           schema:
             type: string
             format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Order UUID
       responses:
         '200':
-          description: Order moved to REJECTED and inventory released
+          description: Order moved to REJECTED status and inventory released
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "order-001"
+                        description: Order UUID
+                      status:
+                        type: string
+                        enum: [PENDING, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, CANCELLED, REJECTED]
+                        example: "REJECTED"
+                example:
+                  success: true
+                  data:
+                    id: "order-001"
+                    status: "REJECTED"
+      security:
+        - BearerAuth: []
 
   /orders/{id}/complete:
     post:
       summary: Vendor completes order and fulfils physical inventory
-      security:
-        - BearerAuth: []
+      operationId: completeOrder
       parameters:
         - name: id
           in: path
@@ -322,15 +753,42 @@ paths:
           schema:
             type: string
             format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Order UUID
       responses:
         '200':
           description: Order COMPLETED and inventory decremented
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "order-001"
+                        description: Order UUID
+                      status:
+                        type: string
+                        enum: [PENDING, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, CANCELLED, REJECTED]
+                        example: "COMPLETED"
+                example:
+                  success: true
+                  data:
+                    id: "order-001"
+                    status: "COMPLETED"
+      security:
+        - BearerAuth: []
 
   /payments:
     post:
       summary: Record a cash or UPI payment
-      security:
-        - BearerAuth: []
+      operationId: recordPayment
       requestBody:
         required: true
         content:
@@ -342,43 +800,127 @@ paths:
                 order_id:
                   type: string
                   format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                  description: Order UUID
                 method:
                   type: string
                   enum: [CASH, UPI]
+                  example: "UPI"
+                  description: Payment method
                 amount_paise:
                   type: integer
                   minimum: 1
+                  example: 5000
+                  description: Payment amount in paise (1/100 of currency unit)
       responses:
         '201':
           description: Payment recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: string
+                        example: "pay-001"
+                      amountPaise:
+                        type: integer
+                        example: 5000
+                      orderId:
+                        type: string
+                        example: "order-001"
+                example:
+                  success: true
+                  data:
+                    paymentId: "pay-001"
+                    amountPaise: 5000
+                    orderId: "order-001"
+        '400':
+          description: Payment validation error (e.g., overpayment, invalid method)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate payment with same idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /udhaar/accounts:
     post:
       summary: Vendor opens an Udhaar credit account for a customer
-      security:
-        - BearerAuth: []
+      operationId: createUdhaarAccount
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [customer_id]
+              required: [customer_id, credit_limit_paise]
               properties:
                 customer_id:
                   type: string
                   format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                  description: Customer UUID
                 credit_limit_paise:
                   type: integer
+                  minimum: 1
+                  example: 100000
+                  description: Credit limit in paise (₹1,000 = 100000 paise)
       responses:
         '201':
           description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      accountId:
+                        type: string
+                        example: "udhaar-001"
+                      customerId:
+                        type: string
+                        example: "550e8400-e29b-41d4-a716-446655440000"
+                      balancePaise:
+                        type: integer
+                        example: 0
+                        description: Current balance in paise
+                example:
+                  success: true
+                  data:
+                    accountId: "udhaar-001"
+                    customerId: "550e8400-e29b-41d4-a716-446655440000"
+                    balancePaise: 0
+        '400':
+          description: Validation error (e.g., invalid customer, insufficient limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /udhaar/accounts/{id}/entries:
     post:
       summary: Append-only transaction entry on Udhaar ledger
-      security:
-        - BearerAuth: []
+      operationId: addUdhaarEntry
       parameters:
         - name: id
           in: path
@@ -386,79 +928,1198 @@ paths:
           schema:
             type: string
             format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [entry_type, amount_paise]
-              properties:
-                entry_type:
-                  type: string
-                  enum: [CREDIT, REPAYMENT, ADJUSTMENT]
-                amount_paise:
-                  type: integer
-                  minimum: 1
-                note:
-                  type: string
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Account UUID
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entry_type, amount_paise]
+                properties:
+                  entry_type:
+                    type: string
+                    enum: [CREDIT, REPAYMENT, ADJUSTMENT]
+                    example: "CREDIT"
+                    description: Type of ledger entry
+                  amount_paise:
+                    type: integer
+                    minimum: 1
+                    example: 5000
+                    description: Entry amount in paise
+                  note:
+                    type: string
+                    example: "Groceries on credit"
+                    description: Optional note for the entry
       responses:
         '201':
           description: Entry recorded and balance recalculated
-
-  /sync/operations:
-    post:
-      summary: Submit bounded offline operations from device outbox
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      entryId:
+                        type: string
+                        example: "entry-001"
+                      entryType:
+                        type: string
+                        enum: [CREDIT, REPAYMENT, ADJUSTMENT]
+                        example: "CREDIT"
+                      amountPaise:
+                        type: integer
+                        example: 5000
+                      balancePaise:
+                        type: integer
+                        example: 5000
+                        description: Updated balance in paise
+                example:
+                  success: true
+                  data:
+                    entryId: "entry-001"
+                    entryType: "CREDIT"
+                    amountPaise: 5000
+                    balancePaise: 5000
+        '400':
+          description: Validation error (e.g., exceeds balance, invalid entry type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
         - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [client_operation_id, device_id, operation_type, payload]
-              properties:
-                client_operation_id:
-                  type: string
-                  format: uuid
-                device_id:
-                  type: string
-                operation_type:
-                  type: string
-                  enum: [PRODUCT_DESCRIPTION_UPDATE, STOCK_ADJUSTMENT_REQUEST]
-                payload:
-                  type: object
+
+  /udhaar/accounts/{id}/entries:
+    get:
+      summary: Get udhaar ledger entries
+      operationId: getUdhaarEntries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Account UUID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            description: Maximum number of entries to return
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            description: Cursor for pagination (optional)
       responses:
-        '201':
-          description: Operation evaluated and state synchronized
+        '200':
+          description: Paginated ledger entries with balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            entryId:
+                              type: string
+                            entryType:
+                              type: string
+                              enum: [CREDIT, REPAYMENT, ADJUSTMENT]
+                            amountPaise:
+                              type: integer
+                            balancePaise:
+                              type: integer
+                            createdAt:
+                              type: string
+                              format: date-time
+                            note:
+                              type: string
+                      balancePaise:
+                        type: integer
+                        example: 5000
+                      totalCreditsPaise:
+                        type: integer
+                        example: 5000
+                      totalRepaymentsPaise:
+                        type: integer
+                        example: 0
+                example:
+                  success: true
+                  data:
+                    entries:
+                      - entryId: "entry-001"
+                        entryType: "CREDIT"
+                        amountPaise: 5000
+                        balancePaise: 5000
+                        createdAt: "2024-11-18T10:30:00Z"
+                        note: "Groceries on credit"
+                    balancePaise: 5000
+                    totalCreditsPaise: 5000
+                    totalRepaymentsPaise: 0
+                    cursor: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /analytics/vendor/summary:
     get:
       summary: Vendor sales summary & collections
-      security:
-        - BearerAuth: []
+      operationId: vendorSummary
       responses:
         '200':
           description: Sales, completed orders, and Udhaar metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalSalesPaise:
+                        type: integer
+                        example: 50000
+                      completedOrders:
+                        type: integer
+                        example: 5
+                      totalCollectionsPaise:
+                        type: integer
+                        example: 45000
+                      outstandingUdhaarPaise:
+                        type: integer
+                        example: 5000
+                example:
+                  success: true
+                  data:
+                    totalSalesPaise: 50000
+                    completedOrders: 5
+                    totalCollectionsPaise: 45000
+                    outstandingUdhaarPaise: 5000
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
   /analytics/platform/overview:
     get:
       summary: Administrative platform overview
-      security:
-        - BearerAuth: []
+      operationId: platformOverview
       responses:
         '200':
           description: Platform-wide aggregate metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalVendors:
+                        type: integer
+                        example: 150
+                      totalCustomers:
+                        type: integer
+                        example: 3200
+                      totalOrdersToday:
+                        type: integer
+                        example: 45
+                      totalRevenuePaise:
+                        type: integer
+                        example: 1250000
+                      activeUsersLast24h:
+                        type: integer
+                        example: 890
+                example:
+                  success: true
+                  data:
+                    totalVendors: 150
+                    totalCustomers: 3200
+                    totalOrdersToday: 45
+                    totalRevenuePaise: 1250000
+                    activeUsersLast24h: 890
+        '401':
+          description: Unauthorized - admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth:
+            - ADMIN
+            - SUPER_ADMIN
 
   /audit-logs:
     get:
       summary: Admin audit trail
-      security:
-        - BearerAuth: []
+      operationId: auditLogs
       responses:
         '200':
           description: Paginated audit logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        action:
+                          type: string
+                          example: "order_accepted"
+                          description: Action performed
+                          enum: [order_created, order_accepted, order_rejected, order_completed, payment_recorded, udhaar_credit, udhaar_repayment, user_registered, user_suspended, role_assigned]
+                        timestamp:
+                          type: string
+                          format: date-time
+                          example: "2024-11-18T10:30:00Z"
+                        userId:
+                          type: string
+                          example: "user-001"
+                        description: Description of the action
+                      requestId:
+                        type: string
+                        example: "550e8400-e29b-41d4-a716-446655440000"
+                    example:
+                      - id: "log-001"
+                        action: "order_accepted"
+                        timestamp: "2024-11-18T10:30:00Z"
+                        userId: "user-001"
+                        requestId: "550e8400-e29b-41d4-a716-446655440000"
+                example:
+                  success: true
+                  data:
+                    - id: "log-001"
+                      action: "order_accepted"
+                      timestamp: "2024-11-18T10:30:00Z"
+                      userId: "user-001"
+                      requestId: "550e8400-e29b-41d4-a716-446655440000"
+        '401':
+          description: Unauthorized - admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth:
+            - ADMIN
+            - SUPER_ADMIN
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      operationId: getUserProfile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  phone:
+                    type: string
+                    example: "+919876543210"
+                  email:
+                    type: string
+                    format: email
+                    example: "customer@example.com"
+                  status:
+                    type: string
+                    enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+                    example: "ACTIVE"
+                  preferredLanguage:
+                    type: string
+                    enum: [en, kn]
+                    example: "en"
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2024-11-17T10:30:00Z"
+                example:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  phone: "+919876543210"
+                  email: "customer@example.com"
+                  status: "ACTIVE"
+                  preferredLanguage: "en"
+                  createdAt: "2024-11-17T10:30:00Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /users/:id:
+    get:
+      summary: Get user by ID
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: User UUID
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  phone:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  status:
+                    type: string
+                    enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+                  preferredLanguage:
+                    type: string
+                    enum: [en, kn]
+                  createdAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized - admin role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth:
+            - ADMIN
+            - SUPER_ADMIN
+
+  /vendors/:id:
+    get:
+      summary: Get vendor profile by ID
+      operationId: getVendorById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Vendor UUID
+      responses:
+        '200':
+          description: Vendor details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  businessName:
+                    type: string
+                    example: "Ramesh Organic Veggies"
+                  status:
+                    type: string
+                    enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+                    example: "ACTIVE"
+                  description:
+                    type: string
+                    example: "Organic vegetables vendor since 2020"
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2024-11-17T10:30:00Z"
+                example:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  businessName: "Ramesh Organic Veggies"
+                  status: "ACTIVE"
+                  description: "Organic vegetables vendor since 2020"
+                  createdAt: "2024-11-17T10:30:00Z"
+        '404':
+          description: Vendor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /products:
+    get:
+      summary: List all products (public browse)
+      operationId: listProducts
+      responses:
+        '200':
+          description: List of active products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: "prod-001"
+                        name:
+                          type: string
+                          example: "Fresh Organic Tomatoes"
+                        price:
+                          type: number
+                          example: 120
+                        category:
+                          type: string
+                          example: "vegetables"
+                        stock:
+                          type: integer
+                          example: 100
+                      example:
+                        - id: "prod-001"
+                          name: "Fresh Organic Tomatoes"
+                          price: 120
+                          category: "vegetables"
+                          stock: 100
+        '401':
+          description: Unauthorized - may require read access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+
+  /products/vendor/:vendorId:
+    get:
+      summary: List products by vendor
+      operationId: listVendorProducts
+      parameters:
+        - name: vendorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Vendor UUID
+      responses:
+        '200':
+          description: List of vendor products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: "prod-001"
+                        name:
+                          type: string
+                          example: "Fresh Organic Tomatoes"
+                        price:
+                          type: number
+                          example: 120
+                        costPrice:
+                          type: number
+                          example: 80
+                        stock:
+                          type: integer
+                          example: 100
+                      example:
+                        - id: "prod-001"
+                          name: "Fresh Organic Tomatoes"
+                          price: 120
+                          costPrice: 80
+                          stock: 100
+        '404':
+          description: Vendor not found or no products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+
+  /categories:
+    get:
+      summary: List all categories
+      operationId: listCategories
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "cat-001"
+                        name:
+                          type: string
+                          example: "Vegetables"
+                        description:
+                          type: string
+                          example: "Fresh vegetables and produce"
+                      example:
+                        - id: "cat-001"
+                          name: "Vegetables"
+                          description: "Fresh vegetables and produce"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+
+  /cart/items:
+    patch:
+      summary: Update cart item quantity
+      operationId: updateCartItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, quantity]
+              properties:
+                product_id:
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                  description: Product UUID
+                quantity:
+                  type: integer
+                  minimum: 1
+                  example: 3
+                  description: New quantity
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+        '400':
+          description: Invalid quantity or insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Product not in cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /cart/items/:product_id:
+    delete:
+      summary: Remove item from cart
+      operationId: removeCartItem
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Product UUID to remove
+      responses:
+        '200':
+          description: Item removed from cart
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Item removed from cart"
+        '404':
+          description: Product not in cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /orders/{id}/prepare:
+    post:
+      summary: Vendor marks order as preparing
+      operationId: prepareOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Order UUID
+      responses:
+        '200':
+          description: Order moved to PREPARING status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "order-001"
+                        description: Order UUID
+                      status:
+                        type: string
+                        enum: [PENDING, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, CANCELLED, REJECTED]
+                        example: "PREPARING"
+                example:
+                  success: true
+                  data:
+                    id: "order-001"
+                    status: "PREPARING"
+      security:
+        - BearerAuth: []
+
+  /orders/{id}/ready-for-pickup:
+    post:
+      summary: Vendor marks order ready for pickup
+      operationId: readyForPickup
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Order UUID
+      responses:
+        '200':
+          description: Order moved to READY_FOR_PICKUP status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "order-001"
+                        description: Order UUID
+                      status:
+                        type: string
+                        enum: [PENDING, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, CANCELLED, REJECTED]
+                        example: "READY_FOR_PICKUP"
+                example:
+                  success: true
+                  data:
+                    id: "order-001"
+                    status: "READY_FOR_PICKUP"
+      security:
+        - BearerAuth: []
+
+  /payments/:id/verify:
+    post:
+      summary: Verify UPI payment
+      operationId: verifyPayment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Payment UUID
+      responses:
+        '200':
+          description: Payment verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: string
+                        example: "pay-001"
+                      status:
+                        type: string
+                        example: "VERIFIED"
+                        enum: [PENDING, VERIFIED, FAILED]
+                example:
+                  success: true
+                  data:
+                    paymentId: "pay-001"
+                    status: "VERIFIED"
+        '400':
+          description: Payment verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /payments/:id/refunds:
+    post:
+      summary: Record refund for a payment
+      operationId: recordRefund
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Payment UUID
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [amount_paise, reason]
+                properties:
+                  amount_paise:
+                    type: integer
+                    minimum: 1
+                    example: 2500
+                    description: Refund amount in paise
+                  reason:
+                    type: string
+                    example: "Customer returned item"
+                    description: Reason for refund
+      responses:
+        '201':
+          description: Refund recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      refundId:
+                        type: string
+                        example: "refund-001"
+                      amountPaise:
+                        type: integer
+                        example: 2500
+                      orderId:
+                        type: string
+                        example: "order-001"
+                example:
+                  success: true
+                  data:
+                    refundId: "refund-001"
+                    amountPaise: 2500
+                    orderId: "order-001"
+        '400':
+          description: Refund validation error (e.g., exceeds paid amount)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /udhaar/accounts:
+    post:
+      summary: Vendor opens an Udhaar credit account for a customer
+      operationId: createUdhaarAccount2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, credit_limit_paise]
+              properties:
+                customer_id:
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                  description: Customer UUID
+                credit_limit_paise:
+                  type: integer
+                  minimum: 1
+                  example: 100000
+                  description: Credit limit in paise
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      accountId:
+                        type: string
+                        example: "udhaar-001"
+                      customerId:
+                        type: string
+                        example: "550e8400-e29b-41d4-a716-446655440000"
+                      balancePaise:
+                        type: integer
+                        example: 0
+                        description: Current balance in paise
+                example:
+                  success: true
+                  data:
+                    accountId: "udhaar-001"
+                    customerId: "550e8400-e29b-41d4-a716-446655440000"
+                    balancePaise: 0
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /reviews:
+    post:
+      summary: Create a review for a vendor
+      operationId: createReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vendor_id, rating, title]
+              properties:
+                vendor_id:
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                  description: Vendor UUID
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                  description: Rating from 1 to 5 stars
+                title:
+                  type: string
+                  example: "Great vegetables"
+                  description: Review title
+                description:
+                  type: string
+                  example: "Fresh and organic, delivered on time"
+                  description: Review description (optional)
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      reviewId:
+                        type: string
+                        example: "review-001"
+                      vendorId:
+                        type: string
+                        example: "550e8400-e29b-41d4-a716-446655440000"
+                      rating:
+                        type: integer
+                        example: 5
+                      title:
+                        type: string
+                        example: "Great vegetables"
+                      createdAt:
+                        type: string
+                        format: date-time
+                        example: "2024-11-18T10:30:00Z"
+                example:
+                  success: true
+                  data:
+                    reviewId: "review-001"
+                    vendorId: "550e8400-e29b-41d4-a716-446655440000"
+                    rating: 5
+                    title: "Great vegetables"
+                    createdAt: "2024-11-18T10:30:00Z"
+        '400':
+          description: Validation error (e.g., invalid rating, vendor not found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vendor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /reviews:
+    get:
+      summary: List reviews for a vendor
+      operationId: listReviews
+      parameters:
+        - name: vendor_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          description: Vendor UUID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            description: Maximum number of reviews
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            description: Pagination cursor (optional)
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        reviewId:
+                          type: string
+                        rating:
+                          type: integer
+                          example: 5
+                        title:
+                          type: string
+                          example: "Great vegetables"
+                          description: Review title
+                        createdAt:
+                          type: string
+                          format: date-time
+                          example: "2024-11-18T10:30:00Z"
+                      description:
+                        type: string
+                        example: "Fresh and organic, delivered on time"
+                      userId:
+                        type: string
+                        example: "user-001"
+                      example:
+                        - reviewId: "review-001"
+                          rating: 5
+                          title: "Great vegetables"
+                          createdAt: "2024-11-18T10:30:00Z"
+                          description: "Fresh and organic, delivered on time"
+                example:
+                  success: true
+                  data:
+                    - reviewId: "review-001"
+                      rating: 5
+                      title: "Great vegetables"
+                      createdAt: "2024-11-18T10:30:00Z"
+                      description: "Fresh and organic, delivered on time"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+
+  /loyalty/me:
+    get:
+      summary: Get customer loyalty summary
+      operationId: loyaltySummary
+      responses:
+        '200':
+          description: Loyalty summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalSpentPaise:
+                        type: integer
+                        example: 50000
+                      totalOrders:
+                        type: integer
+                        example: 10
+                      averageTicketPaise:
+                        type: integer
+                        example: 5000
+                      loyaltyPoints:
+                        type: integer
+                        example: 500
+                example:
+                  success: true
+                  data:
+                    totalSpentPaise: 50000
+                    totalOrders: 10
+                    averageTicketPaise: 5000
+                    loyaltyPoints: 500
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
 
 components:
   securitySchemes:
@@ -473,16 +2134,88 @@ components:
       properties:
         access_token:
           type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNTVlODQwZS0wYWYxLTRlYWMtYmFjYS02NDZmZDliZjI1ZiIsImV4cCI6..."
         refresh_token:
           type: string
+          description: JWT refresh token for obtaining new access tokens
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN5lODQwZS0wYWYxLTRlYWMtYmFjYS02NDZmZDliZjI1ZiIsImV4cCI6..."
         expires_in:
           type: integer
+          description: Access token expiration time in seconds
           example: 900
         token_type:
           type: string
-          example: Bearer
+          description: Token type
+          example: "Bearer"
         user:
-          $ref: '#/components/schemas/UserInfo'
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440000"
+            phone:
+              type: string
+              example: "+919876543210"
+            email:
+              type: string
+              format: email
+              example: "customer@example.com"
+            status:
+              type: string
+              enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+              example: "ACTIVE"
+            roles:
+              type: array
+              items:
+                type: string
+                example: ["CUSTOMER"]
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: "INVALID_CREDENTIALS"
+              description: Error code
+            message:
+              type: string
+              example: "The phone or password you entered is incorrect."
+              description: Human-readable error message
+            request_id:
+              type: string
+              format: uuid
+              example: "550e8400-e29b-41d4-a716-446655440000"
+              description: Request ID for support reference
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "items[0].quantity"
+                description: Field that caused the error
+              reason:
+                type: string
+                example: "available_quantity_exceeded"
+                description: Reason for the error
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          example: "items[0].quantity"
+          description: Field that caused the error
+        reason:
+          type: string
+          example: "available_quantity_exceeded"
+          description: Reason for the error
     UserInfo:
       type: object
       required: [id, phone, status, roles]
@@ -490,15 +2223,216 @@ components:
         id:
           type: string
           format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: User UUID
         phone:
           type: string
+          example: "+919876543210"
+          description: User phone number
         email:
           type: string
+          format: email
           nullable: true
+          example: "customer@example.com"
+          description: User email address
         status:
           type: string
           enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+          example: "ACTIVE"
+          description: User account status
+        preferredLanguage:
+          type: string
+          enum: [en, kn]
+          example: "en"
+          description: Preferred language for UI
         roles:
           type: array
           items:
             type: string
+            example: ["CUSTOMER"]
+            description: User roles
+          description: User roles
+    NearbyVendor:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "vendor-001"
+          description: Vendor UUID
+        businessName:
+          type: string
+          example: "Ramesh Organic Veggies"
+          description: Vendor business name
+        distanceKm:
+          type: number
+          example: 2.3
+          description: Distance in kilometers from customer
+        latitude:
+          type: number
+          example: 12.9750
+          description: Vendor latitude
+        longitude:
+          type: number
+          example: 77.5980
+          description: Vendor longitude
+    GeocodeResult:
+      type: object
+      properties:
+        place_id:
+          type: string
+          example: "ChIJd8BlQ2BZwokRAFUEcm_qB_g"
+          description: Google Places ID
+        latitude:
+          type: number
+          example: 37.4220
+          description: Geocoded latitude
+        longitude:
+          type: number
+          example: -122.0841
+          description: Geocoded longitude
+        formattedAddress:
+          type: string
+          example: "1600 Amphitheatre Pkwy, Mountain View, CA 94043, USA"
+          description: Human-readable address
+    CartResponse:
+      type: object
+      properties:
+        cartId:
+          type: string
+          example: "cart-001"
+          description: Cart UUID
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                format: uuid
+                example: "prod-001"
+                description: Product UUID
+              quantity:
+                type: integer
+                minimum: 1
+                example: 2
+                description: Item quantity
+              price:
+                type: number
+                example: 50
+                description: Price per unit
+            example:
+              - productId: "prod-001"
+                quantity: 2
+                price: 50
+        total:
+          type: number
+          example: 100
+          description: Cart total in currency units
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "order-001"
+          description: Order UUID
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, PREPARING, READY_FOR_PICKUP, COMPLETED, CANCELLED, REJECTED]
+          example: "PENDING"
+          description: Order status
+        totalPaise:
+          type: integer
+          example: 10000
+          description: Order total in paise
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-11-18T10:30:00Z"
+          description: Order creation timestamp
+    OrderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+          description: Whether the operation succeeded
+        data:
+          $ref: '#/components/schemas/OrderSummary'
+    PaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+          description: Whether the operation succeeded
+        data:
+          type: object
+          properties:
+            paymentId:
+              type: string
+              example: "pay-001"
+              description: Payment UUID
+            amountPaise:
+              type: integer
+              example: 5000
+              description: Amount in paise
+            orderId:
+              type: string
+              example: "order-001"
+              description: Associated order UUID
+    UdhaarAccountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+          description: Whether the operation succeeded
+        data:
+          type: object
+          properties:
+            accountId:
+              type: string
+              example: "udhaar-001"
+              description: Udhaar account UUID
+            customerId:
+              type: string
+              example: "550e8400-e29b-41d4-a716-446655440000"
+              description: Customer UUID
+            balancePaise:
+              type: integer
+              example: 0
+              description: Current balance in paise
+    ReviewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+          description: Whether the operation succeeded
+        data:
+          type: object
+          properties:
+            reviewId:
+              type: string
+              example: "review-001"
+              description: Review UUID
+            vendorId:
+              type: string
+              example: "550e8400-e29b-41d4-a716-446655440000"
+              description: Vendor UUID
+            rating:
+              type: integer
+              minimum: 1
+              maximum: 5
+              example: 5
+              description: Star rating (1-5)
+            title:
+              type: string
+              example: "Great vegetables"
+              description: Review title
+            createdAt:
+              type: string
+              format: date-time
+              example: "2024-11-18T10:30:00Z"
+              description: Review creation timestamp

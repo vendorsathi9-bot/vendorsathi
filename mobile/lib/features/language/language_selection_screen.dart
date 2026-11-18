@@ -45,7 +45,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.mintSoft : AppColors.surface,
+          color: isSelected ? AppColors.accentSoft : AppColors.surface,
           borderRadius: AppRadii.roundedLg,
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -142,9 +142,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                   width: 84,
                   height: 84,
                   decoration: BoxDecoration(
-                    color: AppColors.mintSoft,
+                    color: AppColors.accentSoft,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.mint, width: 1.5),
+                    border: Border.all(color: AppColors.border, width: 1.5),
                   ),
                   child: const Icon(
                     Icons.translate_rounded,

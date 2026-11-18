@@ -36,6 +36,68 @@ input:focus, select:focus, textarea:focus {
   outline-offset: 1px;
 }
 
+/* --- Responsive Sidebar --- */
+@media (max-width: 768px) {
+  .sidebar-expanded {
+    transform: translateX(0);
+  }
+  .sidebar-collapsed {
+    transform: translateX(-260px);
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    margin-left: 64px !important;
+  }
+  .sidebar-trigger {
+    display: flex !important;
+  }
+}
+
+/* --- Responsive Tables --- */
+@media (max-width: 1024px) {
+  .table-responsive th,
+  .table-responsive td {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+  }
+  
+  /* Hide columns on mobile that are less essential */
+  .table-responsive .hide-on-mobile th,
+  .table-responsive .hide-on-mobile td {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-responsive .hide-on-xsmall th,
+  .table-responsive .hide-on-xsmall td {
+    display: none;
+  }
+}
+
+/* --- Modal --- */
+@media (max-width: 768px) {
+  .modal-overlay {
+    backdrop-filter: blur(4px);
+  }
+  .modal-content {
+    margin: 1rem;
+    border-radius: 0.5rem;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+  }
+}
+
+/* --- Focus Visible --- */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(244, 180, 0, 0.6);
+  outline-offset: 2px;
+}
+
+/* --- Table styles --- */
 .table-container {
   width: 100%;
   overflow-x: auto;
@@ -49,6 +111,7 @@ table {
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
+  min-width: 600px; /* Prevents too-narrow tables */
 }
 
 th {
@@ -57,6 +120,10 @@ th {
   font-weight: 600;
   color: #806B55;
   border-bottom: 1px solid #EAE1D1;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  smoke:;
 }
 
 td {
@@ -125,4 +192,36 @@ tr:hover td {
   border-radius: 0.75rem;
   padding: 1.25rem;
   box-shadow: 0 1px 2px rgba(56, 32, 15, 0.04), 0 18px 44px -28px rgba(56, 32, 15, 0.32);
+}
+
+/* --- Alert messages --- */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.alert-info {
+  background-color: #E0F7FA;
+  color: #075985;
+  border: 1px solid #B2EBF2;
+}
+
+.alert-success {
+  background-color: #E8F5E9;
+  color: #2F7D4F;
+  border: 1px solid #A5D6A7;
+}
+
+.alert-warning {
+  background-color: #FFFDE7;
+  color: #854D0E;
+  border: 1px solid #FFF9C4;
+}
+
+.alert-error {
+  background-color: #FFEBEE;
+  color: #B71C1C;
+  border: 1px solid #EF9A9A;
 }

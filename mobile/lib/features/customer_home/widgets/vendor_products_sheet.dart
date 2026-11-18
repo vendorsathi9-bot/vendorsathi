@@ -115,9 +115,9 @@ class _VendorProductsSheetState extends State<VendorProductsSheet> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.mintSoft,
+                  color: AppColors.accentSoft,
                   borderRadius: AppRadii.roundedMd,
-                  border: Border.all(color: AppColors.mint),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 26),
               ),

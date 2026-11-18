@@ -66,7 +66,7 @@ class VendorDashboardTab extends StatelessWidget {
                   value: '₹$grossSalesRupees',
                   icon: Icons.payments_rounded,
                   iconColor: AppColors.primary,
-                  iconBgColor: AppColors.mintSoft,
+                  iconBgColor: AppColors.accentSoft,
                 ),
               ),
               const SizedBox(width: 10),
@@ -126,7 +126,7 @@ class VendorDashboardTab extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: const BoxDecoration(
-                      color: AppColors.mintSoft,
+                      color: AppColors.accentSoft,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.wb_sunny_rounded, color: Colors.orange, size: 24),
@@ -189,7 +189,7 @@ class VendorDashboardTab extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: const BoxDecoration(
-                          color: AppColors.mintSoft,
+                          color: AppColors.accentSoft,
                           borderRadius: AppRadii.roundedPill,
                         ),
                         child: Text(

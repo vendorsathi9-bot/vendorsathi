@@ -1,193 +1,238 @@
-# VendorSaathi — Build the Complete Application
+# Fix HTTP 500 Error When Increasing Product Quantity in Customer Cart — VendorSaathi
 
-You are the lead software architect and senior full-stack engineer responsible for building VendorSaathi.
+You are working on the existing VendorSaathi application. A critical customer-facing bug occurs when a customer clicks the **"+" / Increase Quantity** button for a product already in their cart.
 
-The attached `architecture.md` contains the complete technical architecture, technology stack, database design, API specifications, business logic, coding standards, security requirements, and implementation guidelines.
+**Observed issue:** The app receives an HTTP `500 Internal Server Error` when attempting to increase the quantity of a cart item.
 
-Your responsibility is to turn this architecture into a fully functional, production-ready application.
+Your task is to investigate the complete request flow, identify the actual root cause, implement a reliable fix, and verify it with tests.
 
-## 1. Primary Instruction
+Do not assume the cause. Inspect the existing implementation before changing anything.
 
-Read and understand the entire `architecture.md` before writing code.
+---
 
-**Start implementing the application immediately. Do not spend time creating architecture reviews, audit reports, or separate implementation plans.**
+## 1. Understand the existing architecture
 
-Treat `architecture.md` as the primary source of truth throughout development.
+First inspect:
 
-Do not redesign the architecture or unnecessarily change the selected technologies.
+- `architecture.md`
+- Backend source code and cart-related routes, handlers, services, and repositories.
+- Flutter customer cart screen and quantity controls.
+- API client, request/response models, and error handling.
+- PostgreSQL cart tables, constraints, migrations, and queries.
+- Existing cart-related tests.
 
-## 2. Technology Stack
+Identify the exact flow:
 
-Follow the exact stack specified in `architecture.md`, including:
+1. Customer opens the cart.
+2. Customer taps the increase quantity button.
+3. Flutter sends the API request.
+4. Backend authenticates the customer.
+5. Backend identifies the cart and cart item.
+6. Backend validates the requested quantity and product availability.
+7. Backend updates the cart item in PostgreSQL.
+8. Backend returns the updated cart.
+9. Flutter updates the UI with the new quantity and total price.
 
-- Backend: Go with Gin.
-- Database: PostgreSQL.
-- Mobile application: Flutter.
-- Admin dashboard: React.
-- State management and supporting libraries as specified in the architecture.
-- Offline storage and synchronization: SQLite.
-- Authentication: JWT.
-- Notifications: Firebase Cloud Messaging.
-- External integrations: Google Maps and OpenWeather where specified.
-- Deployment: Docker and the documented infrastructure.
+Document the endpoint, HTTP method, request payload, handler, service, SQL operation, and response model actually used by this project.
 
-Do not replace these technologies with alternatives without a compelling technical reason.
+Do not invent a new endpoint if an existing endpoint should be fixed.
 
-## 3. Development Approach
+## 2. Investigate the HTTP 500 error
 
-Build the application incrementally in dependency order.
+Trace the request from Flutter to PostgreSQL.
 
-### Phase 1 — Backend Foundation
-- Initialize the Go backend.
-- Establish the documented project structure.
-- Implement configuration and environment management.
-- Implement PostgreSQL connectivity.
-- Create database migrations.
-- Implement dependency injection.
-- Set up Gin routing and middleware.
-- Implement authentication and authorization.
-- Implement structured logging and error handling.
+Inspect these possible failure points:
 
-### Phase 2 — Core Backend Modules
-Implement the modules specified in `architecture.md`, including:
+### Flutter application
+- Is the correct cart item ID being sent?
+- Is the quantity increment request using the expected payload?
+- Is the API URL correct?
+- Is the authentication token attached?
+- Is the request body serialized correctly?
+- Is the app accidentally sending `null`, zero, a negative value, or an incorrect data type?
+- Is the request being triggered multiple times by rapid button taps?
+- Is the response model correctly handling the backend response?
 
-- User and role management.
-- Vendor management.
-- Customer management.
-- Product management.
-- Inventory management.
-- Categories.
-- Location and nearby vendor discovery.
-- Cart management.
-- Order management.
-- Order fulfilment.
-- Payment records.
-- Split payments.
-- Udhaar ledger.
-- Notifications.
-- Sales summaries and analytics.
-- Admin management and audit logs.
+### Go backend
+- Is the route correctly registered?
+- Is the authentication middleware working?
+- Is the customer ID extracted correctly?
+- Is the cart item being retrieved using the correct identifier?
+- Are missing cart items handled properly?
+- Are database errors being swallowed or incorrectly converted into HTTP 500?
+- Are pointer, nil, and type-conversion errors possible?
+- Is the handler passing the correct parameters to the service?
+- Is the service using the correct transaction boundaries?
+- Are errors returned and logged correctly?
 
-Implement actual database operations and business logic. Do not substitute mock responses for real functionality.
+### PostgreSQL
+Inspect the actual schema and SQL queries.
 
-### Phase 3 — Flutter Application
-Build the Vendor and Customer experiences within the Flutter application.
+Check for:
+- Incorrect column or table names.
+- UUID conversion errors.
+- Foreign-key violations.
+- Unique constraint violations.
+- `NULL` values in non-nullable columns.
+- Incorrect quantity types.
+- Invalid update queries.
+- Transaction failures.
+- Deadlocks or concurrent updates.
+- Product stock and availability constraints.
+- Incorrect joins between carts, cart items, and products.
 
-Implement:
-- Authentication.
-- Role-based navigation.
-- Vendor dashboard.
-- Product and inventory management.
-- Customer home screen.
-- Nearby vendor discovery.
-- Product browsing.
-- Cart and checkout.
-- Order tracking.
-- Payment records.
-- Udhaar functionality.
-- Notifications.
-- Offline caching and synchronization as specified.
+Do not change the database schema unless the investigation proves that a schema change is necessary.
 
-Maintain a clean, consistent, intuitive UI.
+## 3. Correct quantity update logic
 
-### Phase 4 — React Admin Dashboard
-Build the administrative dashboard.
+Implement the fix using the existing architecture.
 
-Implement:
-- Admin authentication.
-- Dashboard overview.
-- Vendor management.
-- Customer management.
-- Product oversight.
-- Order monitoring.
-- Payment monitoring.
-- Udhaar oversight where authorized.
-- Analytics and reports.
-- Audit logs.
-- Role-based access control.
+The intended behaviour:
 
-### Phase 5 — Integration
-Connect the Flutter application and React dashboard to the actual Go backend.
+- Clicking `+` increases the selected cart item's quantity by exactly one.
+- Clicking `-` decreases it by exactly one.
+- Quantity must never become zero or negative unless the existing application explicitly uses zero to remove an item.
+- Removing an item must use the existing remove-item functionality.
+- Quantity must not exceed available product stock.
+- The backend must validate the quantity independently of Flutter.
+- The backend must verify that the cart item belongs to the authenticated customer.
+- The cart total and item subtotal must be recalculated correctly.
+- The product price must come from trusted backend/database data, not from a client-supplied price.
+- Updating one item must not accidentally modify another cart item.
+- Concurrent quantity updates must not silently corrupt the final quantity.
 
-Verify:
-- API contracts.
-- Authentication.
-- Authorization.
-- Data consistency.
-- Order workflows.
-- Inventory updates.
-- Payment recording.
-- Notifications.
-- Error handling.
+Use an atomic database update or a transaction with appropriate row locking where required by the existing design.
 
-### Phase 6 — Testing and Production Readiness
-- Write unit tests.
-- Write integration tests.
-- Test critical business workflows.
-- Test concurrent inventory operations.
-- Test authentication and authorization.
-- Test offline synchronization.
-- Fix discovered bugs.
-- Verify database migrations.
-- Configure Docker.
-- Prepare deployment documentation.
+Preserve existing inventory reservation and checkout behaviour. Do not reserve or deduct stock merely because a customer increases the cart quantity unless the current business logic explicitly requires it.
 
-## 4. Non-Negotiable Engineering Rules
+## 4. Improve backend error handling
 
-1. Follow `architecture.md` consistently.
-2. Use clean architecture and modular design as documented.
-3. Use dependency injection.
-4. Avoid unnecessary global mutable variables.
-5. Never bypass backend authorization.
-6. Enforce vendor and customer data ownership.
-7. Use database transactions for atomic operations.
-8. Implement idempotency where required.
-9. Follow the documented order state machine.
-10. Maintain financial accuracy using integer paise for INR.
-11. Keep the Udhaar ledger append-only.
-12. Implement proper offline synchronization and conflict handling.
-13. Never hardcode credentials, secrets, or API keys.
-14. Never commit `.env` files.
-15. Write maintainable, reusable, documented code.
-16. Keep frontend and backend API contracts consistent.
-17. Do not introduce unnecessary dependencies.
-18. Do not leave critical functionality as TODOs or placeholders.
+Do not return HTTP 500 for expected business errors.
 
-## 5. How You Must Work
+Use appropriate HTTP responses according to the existing API conventions:
 
-- Start with the backend foundation and proceed in dependency order.
-- Implement complete features rather than generating large amounts of disconnected boilerplate.
-- Before implementing a module, refer to its corresponding architecture section.
-- After implementing each module, run the relevant tests and fix errors.
-- Keep the application runnable throughout development.
-- Maintain accurate documentation as the implementation evolves.
-- Track completed and pending work in `DEVELOPMENT_PROGRESS.md`.
-- Do not repeatedly ask me for permission to proceed to the next development phase.
+| Situation | Expected handling |
+|---|---|
+| Invalid quantity | 400 Bad Request |
+| Unauthenticated request | 401 Unauthorized |
+| Customer does not own the cart item | 403 or 404, consistent with existing security policy |
+| Cart item does not exist | 404 Not Found |
+| Insufficient stock | 409 Conflict |
+| Unexpected database/server failure | 500 Internal Server Error |
 
-If you encounter an unresolved business decision in `architecture.md`, use a safe, reversible implementation consistent with the documented assumptions and record the decision in `DEVELOPMENT_PROGRESS.md`. Ask me only when the decision genuinely blocks implementation or could cause irreversible consequences.
+Return the project's standard API error response format.
 
-If you encounter technical problems, investigate and resolve them instead of abandoning the task.
+Add useful structured server-side logs containing:
+- Request/correlation ID, if supported.
+- Endpoint and HTTP method.
+- Cart ID and cart item ID where safe.
+- Authenticated customer ID where safe.
+- Operation being performed.
+- Actual database or application error.
 
-## 6. Execution Priority
+Never log passwords, JWTs, refresh tokens, or other secrets.
 
-Prioritize in this order:
+Do not expose SQL statements, stack traces, internal paths, or database credentials to the customer.
 
-1. Correct backend architecture and database.
-2. Working APIs and business logic.
-3. Flutter application.
-4. React admin dashboard.
-5. Complete integration.
-6. Testing, optimization, and deployment.
+## 5. Improve Flutter cart behaviour
 
-Do not sacrifice correctness or maintainability for speed.
+Inspect the current cart UI and preserve its existing design.
 
-## 7. Start Now
+Implement reliable quantity controls:
 
-Begin by reading `architecture.md`, inspecting the existing project structure as part of normal development, and immediately implementing the first development phase.
+- Show a loading state while the quantity update is processing.
+- Prevent duplicate requests for the same item while its update is in progress.
+- Update the cart only after a successful backend response, or use an optimistic update with reliable rollback on failure.
+- On failure, restore the previous quantity and totals.
+- Display a useful error message instead of silently failing.
+- Refresh or reconcile the cart with the backend when necessary.
+- Ensure the displayed item subtotal, cart subtotal, and total are consistent.
+- Avoid changing the existing map UI or unrelated screens.
 
-Do not generate an architecture review.
-Do not generate a preliminary audit.
-Do not stop after planning.
-Do not wait for my approval between phases.
+Do not redesign the customer cart screen.
 
-**Your objective is to BUILD VendorSaathi into a complete, integrated, functional application according to `architecture.md`. Start coding now.**
+## 6. Add regression tests
+
+### Backend tests
+
+Write tests for:
+
+1. Increasing quantity from 1 to 2.
+2. Increasing quantity from 2 to 3.
+3. Decreasing quantity.
+4. Updating a cart item that does not exist.
+5. Updating another customer's cart item.
+6. Sending quantity zero.
+7. Sending a negative quantity.
+8. Sending an invalid quantity type.
+9. Increasing quantity beyond available stock.
+10. Updating multiple different cart items.
+11. Database failure during an update.
+12. Concurrent quantity updates.
+13. Correct recalculation of item subtotal and cart total.
+
+Use the project's actual PostgreSQL schema and integration-test setup for database-dependent tests. Do not rely exclusively on mocked database tests.
+
+### Flutter tests
+
+Test:
+1. Tapping `+` sends the correct request.
+2. Successful response updates quantity.
+3. Successful response updates totals.
+4. Failed request restores the original quantity.
+5. Duplicate taps do not cause duplicate updates.
+6. Insufficient-stock response displays a useful message.
+7. Loading state is displayed correctly.
+
+Run the relevant existing tests as well.
+
+## 7. Verify the complete workflow
+
+Test the complete customer experience:
+
+1. Log in as a customer.
+2. Add a product to the cart.
+3. Increase its quantity.
+4. Confirm the quantity changes.
+5. Confirm item subtotal changes.
+6. Confirm cart total changes.
+7. Decrease quantity.
+8. Remove the item.
+9. Try increasing quantity beyond available stock.
+10. Verify another customer's cart cannot be modified.
+
+Confirm that existing checkout, inventory, and order functionality still works.
+
+## 8. Implementation rules
+
+- Follow the existing project architecture and coding conventions.
+- Reuse existing services, repositories, models, and API response structures.
+- Avoid unnecessary dependencies.
+- Avoid duplicate business logic.
+- Do not hardcode product IDs, cart IDs, customer IDs, or stock values.
+- Do not bypass authentication or authorization.
+- Do not disable validation to hide the error.
+- Do not swallow errors or return fake success responses.
+- Do not modify production data.
+- Do not run destructive database commands.
+- Do not change unrelated features.
+- Do not deploy, push, or publish changes without explicit approval.
+
+## 9. Final report
+
+Create `CART_QUANTITY_500_FIX_REPORT.md` containing:
+
+1. Root cause of the HTTP 500.
+2. Exact endpoint and request payload involved.
+3. Backend files modified.
+4. Flutter files modified.
+5. Database queries or schema changes, if any.
+6. Explanation of the implemented fix.
+7. Tests added.
+8. Test commands and actual results.
+9. Remaining issues or limitations.
+10. Manual verification instructions.
+
+**Important:** Do not declare this bug fixed just because the application builds. The actual quantity-increase API request must succeed against the database, and regression tests must pass.
+
+Start by investigating and reproducing the failure. Then fix the root cause and verify the entire cart quantity workflow.

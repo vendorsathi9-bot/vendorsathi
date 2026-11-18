@@ -23,9 +23,16 @@ type Config struct {
 	Weather        WeatherConfig   `mapstructure:"WEATHER"`
 	Storage        StorageConfig   `mapstructure:"STORAGE"`
 	Payment        PaymentConfig   `mapstructure:"PAYMENT"`
+	RateLimit      RateLimitConfig `mapstructure:"RATE_LIMIT"`
 	LogLevel       string          `mapstructure:"LOG_LEVEL"`
 	RequestTimeout time.Duration   `mapstructure:"REQUEST_TIMEOUT"`
 	Migration      MigrationConfig `mapstructure:"MIGRATION"`
+}
+
+type RateLimitConfig struct {
+	AuthRequestsPerMinute int           `mapstructure:"AUTH_REQUESTS_PER_MINUTE"`
+	AuthBurst             int           `mapstructure:"AUTH_BURST"`
+	Window                time.Duration `mapstructure:"WINDOW"`
 }
 
 type JWTConfig struct {
@@ -154,6 +161,9 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("MAP.GEOCODING_BASE_URL", "GEOCODING_BASE_URL")
 	_ = v.BindEnv("PAYMENT.RAZORPAY_KEY_ID", "RAZORPAY_KEY_ID")
 	_ = v.BindEnv("PAYMENT.RAZORPAY_KEY_SECRET", "RAZORPAY_KEY_SECRET")
+	_ = v.BindEnv("RATE_LIMIT.AUTH_REQUESTS_PER_MINUTE", "AUTH_RATE_LIMIT")
+	_ = v.BindEnv("RATE_LIMIT.AUTH_BURST", "AUTH_RATE_LIMIT_BURST")
+	_ = v.BindEnv("RATE_LIMIT.WINDOW", "AUTH_RATE_LIMIT_WINDOW")
 
 	setDefaults(v)
 
@@ -197,6 +207,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("REQUEST_TIMEOUT", 30*time.Second)
 	v.SetDefault("MIGRATION.PATH", "file://migrations")
 	v.SetDefault("MIGRATION.AUTO_APPLY", true)
+
+	v.SetDefault("RATE_LIMIT.AUTH_REQUESTS_PER_MINUTE", 60)
+	v.SetDefault("RATE_LIMIT.AUTH_BURST", 15)
+	v.SetDefault("RATE_LIMIT.WINDOW", 1*time.Minute)
 
 	v.SetDefault("JWT.ISSUER", "vendorsaathi")
 	v.SetDefault("JWT.AUDIENCE", "vendorsaathi-api")

@@ -72,7 +72,7 @@ class AppStatusBadge extends StatelessWidget {
       case BadgeVariant.info:
         return AppColors.infoBg;
       case BadgeVariant.primary:
-        return AppColors.mintSoft;
+        return AppColors.accent;
       case BadgeVariant.neutral:
         return AppColors.surfaceMuted;
     }

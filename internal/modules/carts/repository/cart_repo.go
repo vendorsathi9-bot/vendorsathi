@@ -72,11 +72,12 @@ func (r *CartRepository) GetCartByID(ctx context.Context, cartID, customerID uui
 }
 
 // GetActiveCart returns the customer's current active cart (any vendor).
+// It finds the most recently updated cart for the customer, regardless of status.
 func (r *CartRepository) GetActiveCart(ctx context.Context, customerID uuid.UUID) (*model.Cart, error) {
 	var cart model.Cart
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, customer_id, vendor_id, status, updated_at
-		FROM carts WHERE customer_id = $1 AND status = 'ACTIVE'
+		FROM carts WHERE customer_id = $1
 		ORDER BY updated_at DESC
 		LIMIT 1
 	`, customerID).Scan(&cart.ID, &cart.CustomerID, &cart.VendorID, &cart.Status, &cart.UpdatedAt)
@@ -85,6 +86,10 @@ func (r *CartRepository) GetActiveCart(ctx context.Context, customerID uuid.UUID
 			return nil, shared.ErrNotFound
 		}
 		return nil, err
+	}
+	// Update cart status to ACTIVE if it was empty (legacy carts)
+	if cart.Status == "" {
+		_, _ = r.pool.Exec(ctx, `UPDATE carts SET status = 'ACTIVE' WHERE id = $1`, cart.ID)
 	}
 	return &cart, nil
 }

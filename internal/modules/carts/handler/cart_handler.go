@@ -172,6 +172,10 @@ func handleCartError(c *gin.Context, err error) {
 			httpx.ErrorForbidden(c, appErr.Message)
 		case errors.Is(appErr.Err, shared.ErrConflict):
 			httpx.ErrorConflict(c, appErr.Message, nil)
+		case errors.Is(appErr.Err, shared.ErrInsufficientStock):
+			httpx.ErrorConflict(c, appErr.Message, nil)
+		case errors.Is(appErr.Err, shared.ErrValidationFailed):
+			httpx.ErrorBadRequest(c, appErr.Message, nil)
 		default:
 			httpx.ErrorInternal(c, appErr.Message)
 		}

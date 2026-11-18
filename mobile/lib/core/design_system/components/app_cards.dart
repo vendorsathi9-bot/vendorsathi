@@ -97,7 +97,7 @@ class AppStatCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: iconBgColor ?? AppColors.mintSoft,
+                  color: iconBgColor ?? AppColors.accentSoft,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -163,14 +163,14 @@ class AppVendorCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Store Avatar icon with mint background
+          // Store Avatar icon with warm cream accent background
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.mintSoft,
+              color: AppColors.accentSoft,
               borderRadius: AppRadii.roundedMd,
-              border: Border.all(color: AppColors.mint, width: 1),
+              border: Border.all(color: AppColors.border, width: 1),
             ),
             child: const Icon(
               Icons.storefront_rounded,
@@ -299,7 +299,7 @@ class AppProductCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: isAvailable ? AppColors.mintSoft : AppColors.surfaceMuted,
+              color: isAvailable ? AppColors.accentSoft : AppColors.surfaceMuted,
               borderRadius: AppRadii.roundedMd,
               border: Border.all(color: AppColors.borderLight),
             ),
@@ -379,7 +379,7 @@ class AppProductCard extends StatelessWidget {
           else if (inCartQty > 0)
             Container(
               decoration: BoxDecoration(
-                color: AppColors.mintSoft,
+                color: AppColors.accentSoft,
                 borderRadius: AppRadii.roundedPill,
                 border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
               ),

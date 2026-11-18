@@ -7,19 +7,22 @@ import (
 	"github.com/google/uuid"
 	"vendorsaathi/internal/modules/carts/model"
 	cartsRepo "vendorsaathi/internal/modules/carts/repository"
+	invRepo "vendorsaathi/internal/modules/inventory/repository"
 	productsRepo "vendorsaathi/internal/modules/products/repository"
 	"vendorsaathi/internal/shared"
 )
 
 type CartService struct {
-	cartRepo    *cartsRepo.CartRepository
-	productRepo *productsRepo.ProductRepository
+	cartRepo        *cartsRepo.CartRepository
+	productRepo     *productsRepo.ProductRepository
+	inventoryRepo   *invRepo.InventoryRepository
 }
 
-func NewCartService(cartRepo *cartsRepo.CartRepository, productRepo *productsRepo.ProductRepository) *CartService {
+func NewCartService(cartRepo *cartsRepo.CartRepository, productRepo *productsRepo.ProductRepository, inventoryRepo *invRepo.InventoryRepository) *CartService {
 	return &CartService{
-		cartRepo:    cartRepo,
-		productRepo: productRepo,
+		cartRepo:        cartRepo,
+		productRepo:     productRepo,
+		inventoryRepo:   inventoryRepo,
 	}
 }
 
@@ -89,16 +92,73 @@ func (s *CartService) RemoveItem(ctx context.Context, customerID, productID uuid
 }
 
 // UpdateItemQuantity updates the quantity of an item in the customer's active cart.
+// It validates that the product exists, belongs to the cart's vendor, and that the
+// requested quantity does not exceed available stock.
 func (s *CartService) UpdateItemQuantity(ctx context.Context, customerID, productID uuid.UUID, quantity int64) (*model.CartOutput, error) {
+	// Validate product exists and is active
+	product, err := s.productRepo.GetProductByID(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	if !product.Active {
+		return nil, shared.NewConflict("product is not available")
+	}
+
+	// Get the customer's active cart
 	cart, err := s.cartRepo.GetActiveCart(ctx, customerID)
+	if err != nil {
+		if errors.Is(err, shared.ErrNotFound) {
+			return nil, shared.ErrNotFound // no cart to update
+		}
+		return nil, err
+	}
+
+	// Verify the product is in the customer's active cart
+	cartItems, err := s.cartRepo.GetCartItems(ctx, cart.ID)
 	if err != nil {
 		return nil, err
 	}
 
+	var itemFound bool
+	for _, ci := range cartItems {
+		if ci.ProductID == productID {
+			itemFound = true
+			break
+		}
+	}
+
+	if !itemFound {
+		return nil, shared.ErrNotFound // cart item not found in customer's cart
+	}
+
+	if cart.VendorID != product.VendorID {
+		return nil, shared.NewConflict("product does not belong to the cart's vendor")
+	}
+
+	// Get available stock from inventory
+	inv, err := s.inventoryRepo.GetInventory(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	availableStock := inv.AvailableQty()
+
+	// Validate quantity: must be positive and not exceed available stock
+	if quantity < 1 {
+		return nil, shared.NewValidationError("quantity", "quantity must be at least 1")
+	}
+
+	if quantity > availableStock {
+		return nil, shared.NewInsufficientStock(availableStock, quantity)
+	}
+
+	// Use the repository's atomic upsert (ON CONFLICT handles concurrent updates
+	// at the SQL level). No explicit transaction is needed because the upsert
+	// is already atomic; the repository's Exec + Scan pattern ensures consistency.
 	_, err = s.cartRepo.AddOrUpdateCartItem(ctx, cart.ID, productID, quantity)
 	if err != nil {
 		return nil, err
 	}
+
 
 	return s.cartRepo.GetCartWithItems(ctx, cart.ID)
 }

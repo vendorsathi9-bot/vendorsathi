@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 /// VendorSaathi Design System — Spacing, Radii, and Shadows
 class AppSpacing {
@@ -26,40 +27,63 @@ class AppRadii {
 }
 
 class AppShadows {
-  /// Subtle, elegant card elevation
+  /// Subtle, elegant card elevation — espresso-based
   static const List<BoxShadow> card = [
     BoxShadow(
-      color: Color(0x08000000),
+      color: AppColors.shadowEspresso10,
       blurRadius: 8,
       offset: Offset(0, 2),
     ),
     BoxShadow(
-      color: Color(0x05000000),
+      color: AppColors.shadowEspresso05,
       blurRadius: 1,
       offset: Offset(0, 1),
     ),
   ];
 
-  /// Elevated component (bottom navigation, modals, popovers)
+  /// Elevated component (bottom navigation, modals, popovers) — espresso-based
   static const List<BoxShadow> elevated = [
     BoxShadow(
-      color: Color(0x10000000),
+      color: AppColors.shadowEspresso20,
       blurRadius: 16,
       offset: Offset(0, 4),
     ),
     BoxShadow(
-      color: Color(0x06000000),
+      color: AppColors.shadowEspresso10,
       blurRadius: 4,
       offset: Offset(0, 2),
     ),
   ];
 
-  /// Floating button or sticky bar shadow
+  /// Floating button or sticky bar shadow — espresso-based
   static const List<BoxShadow> floating = [
     BoxShadow(
-      color: Color(0x181B4332), // primary tint shadow
+      color: AppColors.shadowEspresso30,
       blurRadius: 16,
       offset: Offset(0, 6),
+    ),
+  ];
+
+  /// Prominent shadow for dialogs, bottom sheets
+  static const List<BoxShadow> modal = [
+    BoxShadow(
+      color: AppColors.shadowEspresso20,
+      blurRadius: 24,
+      offset: Offset(0, 8),
+    ),
+    BoxShadow(
+      color: AppColors.shadowEspresso10,
+      blurRadius: 8,
+      offset: Offset(0, 4),
+    ),
+  ];
+
+  /// Inner shadow for pressed states
+  static const List<BoxShadow> inner = [
+    BoxShadow(
+      color: AppColors.shadowEspresso20,
+      blurRadius: 4,
+      offset: Offset(0, 2),
     ),
   ];
 }

@@ -215,7 +215,7 @@ class CustomerLoyaltyTab extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: addr.isDefault ? AppColors.mintSoft : AppColors.surfaceMuted,
+                      color: addr.isDefault ? AppColors.accentSoft : AppColors.surfaceMuted,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -241,7 +241,7 @@ class CustomerLoyaltyTab extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: const BoxDecoration(
-                                  color: AppColors.mintSoft,
+                                  color: AppColors.accentSoft,
                                   borderRadius: AppRadii.roundedPill,
                                 ),
                                 child: const Text('Default', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
